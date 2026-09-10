@@ -1,0 +1,9 @@
+#model-container {
+    border: solid gray;
+    height: 3fr;
+}
+
+#user-container {
+    border: solid gray;
+    height: 1fr;
+}
