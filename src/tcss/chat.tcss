@@ -1,9 +1,20 @@
 #model-container {
     border: solid gray;
     height: 3fr;
+    padding: 2
 }
 
 #user-container {
     border: solid gray;
     height: 1fr;
+}
+
+#loading {
+    width: 5%;
+    height: 5%;
+    margin-bottom: 2
+}
+
+.response {
+    margin-bottom: 2
 }
