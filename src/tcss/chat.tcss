@@ -1,12 +1,11 @@
 #model-container {
-    border: solid gray;
-    height: 3fr;
+    border: solid hsl(0, 0%, 20%);
     padding: 2
 }
 
 #user-container {
-    border: solid gray;
-    height: 1fr;
+    border: solid hsl(0, 0%, 20%);
+    height: auto
 }
 
 #loading {
@@ -17,4 +16,11 @@
 
 .response {
     margin-bottom: 2
+}
+
+.prompt {
+    margin-bottom: 2;
+    border: solid hsl(0, 0%, 10%);
+    background: hsl(0, 0%, 10%);
+    width: 100%
 }

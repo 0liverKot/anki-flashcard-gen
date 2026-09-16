@@ -28,17 +28,23 @@ class Chat(App):
         yield self.model_container
         yield self.user_container
 
+
     def on_mount(self) -> None:
         self.model_container.border_title = "Ankify"
         self.loading_response.styles.display = 'none'
 
+
     def on_input_submitted(self, event: Input.Submitted) -> None:
         if event.input.id == 'prompt-input':
             
-            prompt = event.value
+            prompt = event.value.strip()
+            if not prompt:
+                return
+
             event.input.clear()
             event.input.disabled = True
 
+            self.display_prompt(prompt)
             self.loading_response.styles.display = 'block'
             
             response_future = self.model.generate_response(prompt)
@@ -65,6 +71,11 @@ class Chat(App):
         # diaplaying reesponse
         response_label = Label(response, classes="response")
         self.model_container.mount(response_label, before=self.loading_response)
+
+    def display_prompt(self, prompt: str):
+        prompt_label = Label(f'> {prompt}', classes="prompt")
+        self.model_container.mount(prompt_label, before=self.loading_response)
+
 
 if __name__ == "__main__":
     Chat().run()
