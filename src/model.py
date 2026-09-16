@@ -1,8 +1,8 @@
 import ollama
-import json 
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, Future
 from md_parser import md_to_json
+from schemas import Response_Model
 
 class Model: 
 
@@ -11,10 +11,10 @@ class Model:
         self.PATH = Path(__file__).parent / "notes" / "waves_and_particle_nature_of_light.md"
 
 
-    def generate_response(self, prompt: str) -> Future[str]:
+    def generate_response(self, prompt: str) -> Future[Response_Model]:
         return self.executor.submit(self._generate_response, prompt)
 
-    def _generate_response(self, user_prompt: str) -> str:
+    def _generate_response(self, user_prompt: str) -> Response_Model:
         
         system_prompt = self.generate_system_prompt()
         
@@ -24,10 +24,11 @@ class Model:
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt}
                 ],
-            think=False
+            think=False,
+            format="json"
         )
 
-        return response["message"]["content"]
+        return Response_Model.model_validate_json(response["message"]["content"])
     
 
     def generate_system_prompt(self):
@@ -44,7 +45,7 @@ class Model:
         - Prefer clear questions over vague prompts.
         - Keep answers concise but complete.
         - Do not invent information absent from the source.
-        - The tag must describe the card using the following options: Definition, Explanation, Advantages, Disadvantages, Evaluation
+        - The tag must describe the card using one of the following options: Definition, Explanation, Advantages, Disadvantages, Evaluation or Other
         - sources must contain the full path 
 
         Return JSON in this exact shape:
@@ -53,7 +54,7 @@ class Model:
             {{
             "front": "Question",
             "back": "Answer",
-            "tags": ["topic"]
+            "tags": "topic",
             "source": "source"
             }}
         ]

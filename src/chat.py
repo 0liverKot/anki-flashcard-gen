@@ -4,6 +4,8 @@ from textual.widgets import Label, Input, LoadingIndicator
 from model import Model
 from concurrent.futures import Future
 
+from schemas import Response_Model
+
 class Chat(App):
     CSS_PATH = "tcss/chat.tcss"
 
@@ -54,7 +56,7 @@ class Chat(App):
             response_future.add_done_callback(self.handle_response)
 
 
-    def handle_response(self, future: Future[str]) -> None:
+    def handle_response(self, future: Future[Response_Model]) -> None:
         response = future.result()
 
         # UI update must be done on Textual UI's thread
@@ -62,18 +64,20 @@ class Chat(App):
         self.call_from_thread(self.display_response, response) 
 
 
-    def display_response(self, response: str) -> None:
+    def display_response(self, response: Response_Model) -> None:
 
         # returning temporary states to orgininal
         self.loading_response.display = 'none'
         input = self.query_one('#prompt-input')
         input.disabled = False
         input.focus()
-        
+
+        response_text = response.model_dump_json(indent=2)        
 
         # diaplaying reesponse
-        response_label = Label(response, classes="response")
+        response_label = Label(response_text, classes="response")
         self.chat_container.mount(response_label, before=self.loading_response)
+
 
     def display_prompt(self, prompt: str):
         prompt_label = Label(f'> {prompt}', classes="prompt")
