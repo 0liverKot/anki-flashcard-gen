@@ -1,5 +1,5 @@
 from textual.app import App, ComposeResult
-from textual.containers import Container, Vertical
+from textual.containers import VerticalScroll, Vertical
 from textual.widgets import Label, Input, LoadingIndicator
 from model import Model
 from concurrent.futures import Future
@@ -15,7 +15,7 @@ class Chat(App):
 
         self.loading_response = LoadingIndicator(id="loading")
 
-        self.model_container = Container(
+        self.chat_container = VerticalScroll(
             self.loading_response,
             id="model-container"
         )
@@ -25,13 +25,16 @@ class Chat(App):
             id="user-container"
         )
 
-        yield self.model_container
+        yield self.chat_container
         yield self.user_container
 
 
     def on_mount(self) -> None:
-        self.model_container.border_title = "Ankify"
+        self.chat_container.border_title = "Ankify"
         self.loading_response.styles.display = 'none'
+        
+        input = self.query_one('#prompt-input')
+        input.focus()
 
 
     def on_input_submitted(self, event: Input.Submitted) -> None:
@@ -70,11 +73,11 @@ class Chat(App):
 
         # diaplaying reesponse
         response_label = Label(response, classes="response")
-        self.model_container.mount(response_label, before=self.loading_response)
+        self.chat_container.mount(response_label, before=self.loading_response)
 
     def display_prompt(self, prompt: str):
         prompt_label = Label(f'> {prompt}', classes="prompt")
-        self.model_container.mount(prompt_label, before=self.loading_response)
+        self.chat_container.mount(prompt_label, before=self.loading_response)
 
 
 if __name__ == "__main__":
