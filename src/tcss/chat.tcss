@@ -24,3 +24,9 @@
     background: hsl(0, 0%, 10%);
     width: 100%
 }
+
+.error {
+    margin-bottom: 2;
+    border: solid none;
+    width: 100% 
+}
