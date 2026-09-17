@@ -1,19 +1,28 @@
+from pathlib import Path
+from typing import List
 from pydantic import ValidationError
 from textual.app import App, ComposeResult
-from textual.containers import VerticalScroll, Vertical
-from textual.widgets import Label, Input, LoadingIndicator
-from flashcard_model import FlashcardModel
+from textual.containers import VerticalScroll, Vertical, Container
+from textual.widgets import Button, Label, Input, LoadingIndicator
 from concurrent.futures import Future
 
-from schemas import Response_Schema
+try:
+    from .flashcard_model import FlashcardModel
+    from .schemas import Card, Response_Schema
+except ImportError:
+    from flashcard_model import FlashcardModel
+    from schemas import Card, Response_Schema
 
 class Chat(App):
-    CSS_PATH = "tcss/chat.tcss"
+    CSS_PATH = str(Path(__file__).parent / "tcss" / "chat.tcss")
 
     def __init__(self) -> None:
         super().__init__()
         self.model = FlashcardModel()
         self.attempts_remaining = 3
+        self.pending_cards: List[Card] = []
+        self.accepted_cards: List[Card] = []
+        self.proposal_container: Container | None = None
 
 
     def compose(self) -> ComposeResult:
@@ -57,9 +66,10 @@ class Chat(App):
 
 
     def send_prompt(self, prompt: str) -> None:
-            self.loading_response.styles.display = 'block'
-            response_future = self.model.generate_response(prompt)
-            response_future.add_done_callback(lambda future: self.handle_response(prompt, future))
+        self.loading_response.styles.display = 'block'
+
+        response_future = self.model.generate_response(prompt)
+        response_future.add_done_callback(lambda future: self.handle_response(prompt, future))
 
 
     def handle_response(self, prompt: str, future: Future[Response_Schema]) -> None:
@@ -70,25 +80,60 @@ class Chat(App):
                 self.call_from_thread(self.display_max_retries_error)
             else:    
                 self.call_from_thread(self.display_validation_error, prompt)
+            return
 
         # UI update must be done on Textual UI's thread
         # handle_response is running on a background thread
-        self.call_from_thread(self.display_response, response) 
+        self.call_from_thread(self.handle_response_received, response) 
 
 
-    def display_response(self, response: Response_Schema) -> None:
+    def handle_response_received(self, response: Response_Schema) -> None:
 
-        # returning temporary states to orgininal
         self.loading_response.display = 'none'
-        input = self.query_one('#prompt-input')
+
+        self.pending_cards = response.cards
+        self.accepted_cards = []
+        self.show_next_proposal()
+
+
+    def show_next_proposal(self) -> None:
+        if self.proposal_container is not None:
+            self.proposal_container.remove()
+            self.proposal_container = None
+            
+        if not self.pending_cards:
+            self.display_proposals_complete()
+            return
+
+        card = self.pending_cards[0]
+        self.proposal_container = Container(
+            Label(f"Question:\n{card.front}"),
+            Label(f"Answer:\n{card.back}"),
+            Button("Accept", id="accept-proposal", variant="success"),
+            classes="proposal-container"
+        )
+        self.chat_container.mount(self.proposal_container)
+
+
+    def on_button_pressed(self, event: Button.Pressed) -> None:
+        if event.button.id != "accept-proposal" or not self.pending_cards:
+            return
+
+        self.accepted_cards.append(self.pending_cards.pop(0))
+        self.show_next_proposal()
+
+
+    def display_proposals_complete(self) -> None:
+        if len(self.accepted_cards) > 1:
+            complete_label = Label("Your cards have been added")
+        else:
+            complete_label = Label("Your card has been added")
+            
+
+        self.chat_container.mount(complete_label, before=self.loading_response)
+        input = self.query_one("#prompt-input")
         input.disabled = False
         input.focus()
-
-        response_text = response.model_dump_json(indent=2)        
-
-        # diaplaying reesponse
-        response_label = Label(response_text, classes="response")
-        self.chat_container.mount(response_label, before=self.loading_response)
 
 
     def display_prompt(self, prompt: str) -> None:

@@ -1,8 +1,12 @@
 import ollama
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, Future
-from .md_parser import md_to_json
-from .schemas import Response_Schema
+try:
+    from .md_parser import md_to_json
+    from .schemas import Response_Schema
+except ImportError:
+    from md_parser import md_to_json
+    from schemas import Response_Schema
 
 class FlashcardModel: 
 

@@ -1,9 +1,18 @@
 from pathlib import Path
-from ..flashcard_model import FlashcardModel
-from .judge import Judge
-from ..schemas import Card, Judge_Schema
 
-from ..md_parser import md_to_json
+try:
+    from ..flashcard_model import FlashcardModel
+    from .judge import Judge
+    from ..schemas import Card, Judge_Schema
+    from ..md_parser import md_to_json
+except ImportError:
+    import sys
+
+    sys.path.insert(0, str(Path(__file__).parents[1]))
+    from flashcard_model import FlashcardModel
+    from test.judge import Judge
+    from schemas import Card, Judge_Schema
+    from md_parser import md_to_json
 
 def format_judge_response(response: Judge_Schema):
     return f"""

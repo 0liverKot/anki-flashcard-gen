@@ -1,5 +1,8 @@
 import ollama 
-from ..schemas import Card, Judge_Schema
+try:
+    from ..schemas import Card, Judge_Schema
+except ImportError:
+    from schemas import Card, Judge_Schema
 
 class Judge:
 
