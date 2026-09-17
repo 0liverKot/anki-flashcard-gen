@@ -2,17 +2,17 @@ from pydantic import ValidationError
 from textual.app import App, ComposeResult
 from textual.containers import VerticalScroll, Vertical
 from textual.widgets import Label, Input, LoadingIndicator
-from model import Model
+from flashcard_model import FlashcardModel
 from concurrent.futures import Future
 
-from schemas import Response_Model
+from schemas import Response_Schema
 
 class Chat(App):
     CSS_PATH = "tcss/chat.tcss"
 
     def __init__(self) -> None:
         super().__init__()
-        self.model = Model()
+        self.model = FlashcardModel()
         self.attempts_remaining = 3
 
 
@@ -62,7 +62,7 @@ class Chat(App):
             response_future.add_done_callback(lambda future: self.handle_response(prompt, future))
 
 
-    def handle_response(self, prompt: str, future: Future[Response_Model]) -> None:
+    def handle_response(self, prompt: str, future: Future[Response_Schema]) -> None:
         try: 
             response = future.result()
         except ValidationError: 
@@ -76,7 +76,7 @@ class Chat(App):
         self.call_from_thread(self.display_response, response) 
 
 
-    def display_response(self, response: Response_Model) -> None:
+    def display_response(self, response: Response_Schema) -> None:
 
         # returning temporary states to orgininal
         self.loading_response.display = 'none'

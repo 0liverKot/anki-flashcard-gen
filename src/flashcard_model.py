@@ -1,21 +1,24 @@
 import ollama
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, Future
-from md_parser import md_to_json
-from schemas import Response_Model
+from .md_parser import md_to_json
+from .schemas import Response_Schema
 
-class Model: 
+class FlashcardModel: 
 
     def __init__(self) -> None:
         self.executor = ThreadPoolExecutor(max_workers=1)
         self.PATH = Path(__file__).parent / "notes" / "waves_and_particle_nature_of_light.md"
 
 
-    def generate_response(self, prompt: str) -> Future[Response_Model]:
+    def generate_response(self, prompt: str) -> Future[Response_Schema]:
         return self.executor.submit(self._generate_response, prompt)
 
-    def _generate_response(self, user_prompt: str) -> Response_Model:
+    def _generate_response(self, user_prompt: str = "") -> Response_Schema:
         
+        if user_prompt == "":
+            user_prompt = "make flashcards using the source and instructions in the system prompt"
+
         system_prompt = self.generate_system_prompt()
         
         response = ollama.chat(
@@ -25,14 +28,15 @@ class Model:
                 {"role": "user", "content": user_prompt}
                 ],
             think=False,
-            format="json"
+            format=Response_Schema.model_json_schema()
         )
 
-        return Response_Model.model_validate_json(response["message"]["content"])
+        return Response_Schema.model_validate_json(response["message"]["content"])
     
 
-    def generate_system_prompt(self):
-        file_json = md_to_json(self.PATH)
+    def generate_system_prompt(self, file_json = None):
+        if not file_json:
+            file_json = md_to_json(self.PATH)
 
         return f"""
         You generate high-quality Anki flashcards from source material.
@@ -61,4 +65,3 @@ class Model:
         }}                
         
         """
-

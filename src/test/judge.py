@@ -1,5 +1,5 @@
 import ollama 
-from schemas import Card, Judge_Model
+from ..schemas import Card, Judge_Schema
 
 class Judge:
 
@@ -11,29 +11,22 @@ class Judge:
             model="qwen3:8b",
             messages=[
                 {"role": "system", "content": system_prompt},
-                {"role": "user", "content": "Judge the provided flashcard using instructions provided in the system prompt"}
             ],
             think=True,
-            format="json"
+            format=Judge_Schema.model_json_schema()
         )
 
-        return Judge_Model.model_validate_json(response["messages"]["content"])
+        return Judge_Schema.model_validate_json(response["message"]["content"])
 
 
     def generate_system_prompt(self, source: str, flashcard: Card):
+
         return f"""
         You are an impartial LLM judge evaluating a generated flashcard against the provided source material.
 
         Evaluate the flashcards quality using only the source material and the flashcard itself. Do not use outside knowledge to fill gaps or validate claims. 
 
-        The flashcard contains {{
-            "front": "Question",
-            "back": "Answer",
-            "tags": "topic",
-            "source": "source"
-        }}
-
-        Use the source to help locate the text supporting this flashcard, if you cannot find it using this look through the entire source text. This does not impact groundedness however you should take note of this in your overall explanation.
+        Use the source of the flashcard to help locate the text supporting this flashcard, if you cannot find it using this look through the entire source text. This does not impact groundedness however you should take note of this in your overall explanation.
 
         Score the following dimensions:
 
@@ -80,5 +73,5 @@ class Judge:
         {source}
 
         Generated flashcard:
-        {flashcard}
+        {flashcard.model_dump_json()}
         """
