@@ -24,7 +24,8 @@ class Chat(App):
         self.accepted_cards: List[Card] = []
         self.proposal_container: Container | None = None
         self.proposal_counter = 0
-
+        self.original_question: str = ""
+        self.original_answer: str = ""
 
     def compose(self) -> ComposeResult:
 
@@ -151,8 +152,10 @@ class Chat(App):
         else:
             complete_label = Label("No cards have been approved for addition", classes="model-text")
 
+        
         self.chat_container.mount(complete_label, before=self.loading_response)
         
+        self.user_container.border_title = None
         self.user_container.remove_children()
         
         input = Input("", id="prompt-input")
@@ -197,7 +200,8 @@ class Chat(App):
         if self.query("#accept-proposal"):
             return 
 
-        self.query_one('#prompt-input').remove()
+        if self.query("#prompt-input"):
+            self.query_one('#prompt-input').remove()
 
         self.user_container.border_title = "User actions are required for the given suggestion"
         approve_button = Button(label="Approve this flashcard to be added", flat=True, classes="approval-option-button", id='accept-proposal')
@@ -219,6 +223,10 @@ class Chat(App):
                 self.on_edit_proposal()
             case "reject-proposal": 
                 self.on_reject_proposal()
+            case "accept-edit-changes":
+                self.on_accept_edit_changes()
+            case "discard-edit-changes":
+                self.on_discard_edit_changes()
 
 
     def on_accept_proposal(self):
@@ -230,14 +238,48 @@ class Chat(App):
         question_text_area = self.query_one("#proposal-question", TextArea)
         answer_text_area = self.query_one("#proposal-answer", TextArea)
 
+        self.original_question = question_text_area.text
+        self.original_answer = answer_text_area.text
+
         question_text_area.read_only = False
         answer_text_area.read_only = False
         question_text_area.show_cursor = True
         answer_text_area.show_cursor = True
 
+        self.user_container.remove_children()
+        accept_changes_button = Button("Accept changes", classes="approval-option-button", id="accept-edit-changes")
+        discard_changes_button = Button("Discard changes", classes="approval-option-button", id="discard-edit-changes")
+        self.user_container.mount_all([accept_changes_button, discard_changes_button])
+
+
     def on_reject_proposal(self):
         self.pending_cards.pop(0)
         self.show_next_proposal()
+
+
+    def on_accept_edit_changes(self):
+        question_text_area = self.query_one("#proposal-question", TextArea)
+        answer_text_area = self.query_one("#proposal-answer", TextArea)
+        
+        card = self.pending_cards.pop(0)
+        card.front = question_text_area.text.strip()
+        card.back = answer_text_area.text.strip()
+
+        self.accepted_cards.append(card)
+        self.user_container.remove_children()
+        self.show_next_proposal()
+
+
+    def on_discard_edit_changes(self):
+        question_text_area = self.query_one("#proposal-question", TextArea)
+        answer_text_area = self.query_one("#proposal-answer", TextArea)
+        
+        question_text_area.text = self.original_question
+        answer_text_area.text = self.original_answer
+
+        self.user_container.remove_children()
+        self.display_approval_options()
+
 
 if __name__ == "__main__":
     Chat().run()
