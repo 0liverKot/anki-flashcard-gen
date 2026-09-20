@@ -51,11 +51,21 @@
     text-style: bold;
 }
 
-.proposal-input:disabled {
-    color: white;
-    text-opacity: 1;
-    opacity: 1;
+.proposal-text-area {
+    height: 3;
+    min-height: 3;
+    max-height: 3;
     margin-bottom: 1;
+    pointer: default;
+}
+
+.proposal-text-area:focus {
+    border: tall transparent;
+    background-tint: transparent;
+}
+
+.proposal-text-area .text-area--cursor-line {
+    background: transparent;
 }
 
 .proposal-label {

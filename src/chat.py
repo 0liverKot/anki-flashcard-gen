@@ -3,7 +3,7 @@ from typing import List
 from pydantic import ValidationError
 from textual.app import App, ComposeResult
 from textual.containers import VerticalScroll, Vertical, Container
-from textual.widgets import Button, Label, Input, LoadingIndicator
+from textual.widgets import Button, Label, Input, LoadingIndicator, TextArea
 from concurrent.futures import Future
 import anki
 try:
@@ -114,9 +114,21 @@ class Chat(App):
         self.proposal_container = Container(
             Label(f"Proposal {self.proposal_counter}", classes="model-text"),
             Label(f"Question: ", classes="proposal-label"),
-            Input(f"{card.front}", disabled=True, classes="proposal-input"),
+            TextArea(
+                f"{card.front}",
+                read_only=True,
+                show_cursor=False,
+                classes="proposal-text-area",
+                id="proposal-question",
+            ),
             Label(f"Answer: ", classes="proposal-label"),
-            Input(f"{card.back}", disabled=True, classes="proposal-input"),
+            TextArea(
+                f"{card.back}",
+                read_only=True,
+                show_cursor=False,
+                classes="proposal-text-area",
+                id="proposal-answer",
+            ),
             Label(f"Source: {card.source}", classes="proposal-label"),
             classes="proposal-container"
         )
@@ -215,7 +227,13 @@ class Chat(App):
 
 
     def on_edit_proposal(self):
-        pass 
+        question_text_area = self.query_one("#proposal-question", TextArea)
+        answer_text_area = self.query_one("#proposal-answer", TextArea)
+
+        question_text_area.read_only = False
+        answer_text_area.read_only = False
+        question_text_area.show_cursor = True
+        answer_text_area.show_cursor = True
 
     def on_reject_proposal(self):
         self.pending_cards.pop(0)
