@@ -30,3 +30,19 @@
     border: solid none;
     width: 100% 
 }
+
+.approval-option-button {
+    width: 100%;
+    background: hsl(0, 0%, 10%);
+    border: none;
+    text-align: left;
+    content-align: left middle;
+}
+
+.approval-option-button:focus,
+.approval-option-button:focus:hover {
+    background: hsl(0, 0%, 20%);
+    background-tint: transparent;
+    border: none;
+    text-style: bold;
+}

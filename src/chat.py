@@ -109,10 +109,11 @@ class Chat(App):
         self.proposal_container = Container(
             Label(f"Question:\n{card.front}"),
             Label(f"Answer:\n{card.back}"),
-            Button("Accept", id="accept-proposal", variant="success"),
             classes="proposal-container"
         )
         self.chat_container.mount(self.proposal_container)
+
+        self.display_approval_options()
 
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
@@ -167,6 +168,17 @@ class Chat(App):
         input.disabled = False
         input.focus()
 
+
+    def display_approval_options(self) -> None:
+        self.user_container.remove_children()
+
+        self.user_container.border_title = "User actions are required for the given suggestion"
+        approve_button = Button(label="Approve this flashcard to be added", flat=True, classes="approval-option-button")
+        edit_button = Button(label="Manual edits required", flat=True, classes="approval-option-button")
+        delete_button = Button(label="Delete from queue", flat=True, classes="approval-option-button")
+
+        self.user_container.mount_all([approve_button, edit_button, delete_button])
+        approve_button.focus()
 
 if __name__ == "__main__":
     Chat().run()
