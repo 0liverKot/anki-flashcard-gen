@@ -23,6 +23,7 @@ class Chat(App):
         self.pending_cards: List[Card] = []
         self.accepted_cards: List[Card] = []
         self.proposal_container: Container | None = None
+        self.proposal_counter = 0
 
 
     def compose(self) -> ComposeResult:
@@ -93,6 +94,9 @@ class Chat(App):
 
         self.pending_cards = response.cards
         self.accepted_cards = []
+
+        self.chat_container.mount(Label("I have finished generating your flashcards, jsut waiting for your approval now!", classes="model-text"))
+
         self.show_next_proposal()
 
 
@@ -105,10 +109,15 @@ class Chat(App):
             self.display_proposals_complete()
             return
 
+        self.proposal_counter += 1
         card = self.pending_cards[0]
         self.proposal_container = Container(
-            Label(f"Question:\n{card.front}"),
-            Label(f"Answer:\n{card.back}"),
+            Label(f"Proposal {self.proposal_counter}", classes="model-text"),
+            Label(f"Question: ", classes="proposal-label"),
+            Input(f"{card.front}", disabled=True, classes="proposal-input"),
+            Label(f"Answer: ", classes="proposal-label"),
+            Input(f"{card.back}", disabled=True, classes="proposal-input"),
+            Label(f"Source: {card.source}", classes="proposal-label"),
             classes="proposal-container"
         )
         self.chat_container.mount(self.proposal_container)
@@ -118,11 +127,11 @@ class Chat(App):
 
     def display_proposals_complete(self) -> None:
         if len(self.accepted_cards) > 1:
-            complete_label = Label("Your approved cards have been added")
+            complete_label = Label("Your approved cards have been added", classes="model-text")
         elif len(self.accepted_cards) == 1:
-            complete_label = Label("Your approved card has been added")
+            complete_label = Label("Your approved card has been added", classes="model-text")
         else:
-            complete_label = Label("No cards have been approved for addition")
+            complete_label = Label("No cards have been approved for addition", classes="model-text")
 
         self.chat_container.mount(complete_label, before=self.loading_response)
         
