@@ -5,7 +5,7 @@ from textual.app import App, ComposeResult
 from textual.containers import VerticalScroll, Vertical, Container
 from textual.widgets import Button, Label, Input, LoadingIndicator
 from concurrent.futures import Future
-
+import anki
 try:
     from .flashcard_model import FlashcardModel
     from .schemas import Card, Response_Schema
@@ -95,7 +95,7 @@ class Chat(App):
         self.pending_cards = response.cards
         self.accepted_cards = []
 
-        self.chat_container.mount(Label("I have finished generating your flashcards, jsut waiting for your approval now!", classes="model-text"))
+        self.chat_container.mount(Label("I have finished generating your flashcards, just waiting for your approval now!", classes="model-text", id='finished-generating'))
 
         self.show_next_proposal()
 
@@ -126,6 +126,12 @@ class Chat(App):
 
 
     def display_proposals_complete(self) -> None:
+
+        if len(self.accepted_cards) != 0:
+            anki.add_cards(self.accepted_cards)
+
+        self.query_one("#finished-generating").remove()
+
         if len(self.accepted_cards) > 1:
             complete_label = Label("Your approved cards have been added", classes="model-text")
         elif len(self.accepted_cards) == 1:
