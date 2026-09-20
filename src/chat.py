@@ -116,23 +116,20 @@ class Chat(App):
         self.display_approval_options()
 
 
-    def on_button_pressed(self, event: Button.Pressed) -> None:
-        if event.button.id != "accept-proposal" or not self.pending_cards:
-            return
-
-        self.accepted_cards.append(self.pending_cards.pop(0))
-        self.show_next_proposal()
-
-
     def display_proposals_complete(self) -> None:
         if len(self.accepted_cards) > 1:
-            complete_label = Label("Your cards have been added")
+            complete_label = Label("Your approved cards have been added")
+        elif len(self.accepted_cards) == 1:
+            complete_label = Label("Your approved card has been added")
         else:
-            complete_label = Label("Your card has been added")
-            
+            complete_label = Label("No cards have been approved for addition")
 
         self.chat_container.mount(complete_label, before=self.loading_response)
-        input = self.query_one("#prompt-input")
+        
+        self.user_container.remove_children()
+        
+        input = Input("", id="prompt-input")
+        self.user_container.mount(input)
         input.disabled = False
         input.focus()
 
@@ -170,15 +167,44 @@ class Chat(App):
 
 
     def display_approval_options(self) -> None:
-        self.user_container.remove_children()
+        if self.query("#accept-proposal"):
+            return 
+
+        self.query_one('#prompt-input').remove()
 
         self.user_container.border_title = "User actions are required for the given suggestion"
-        approve_button = Button(label="Approve this flashcard to be added", flat=True, classes="approval-option-button")
-        edit_button = Button(label="Manual edits required", flat=True, classes="approval-option-button")
-        delete_button = Button(label="Delete from queue", flat=True, classes="approval-option-button")
+        approve_button = Button(label="Approve this flashcard to be added", flat=True, classes="approval-option-button", id='accept-proposal')
+        edit_button = Button(label="Manual edits required", flat=True, classes="approval-option-button", id='edit-proposal')
+        delete_button = Button(label="Reject this proposal", flat=True, classes="approval-option-button", id='reject-proposal')
 
         self.user_container.mount_all([approve_button, edit_button, delete_button])
         approve_button.focus()
+
+    
+    def on_button_pressed(self, event: Button.Pressed) -> None:
+        if not self.pending_cards:
+            return
+
+        match event.button.id:
+            case "accept-proposal": 
+                self.on_accept_proposal()
+            case "edit-proposal": 
+                self.on_edit_proposal()
+            case "reject-proposal": 
+                self.on_reject_proposal()
+
+
+    def on_accept_proposal(self):
+        self.accepted_cards.append(self.pending_cards.pop(0))
+        self.show_next_proposal()
+
+
+    def on_edit_proposal(self):
+        pass 
+
+    def on_reject_proposal(self):
+        self.pending_cards.pop(0)
+        self.show_next_proposal()
 
 if __name__ == "__main__":
     Chat().run()
