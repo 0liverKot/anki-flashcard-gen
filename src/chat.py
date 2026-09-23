@@ -5,7 +5,7 @@ from textual.app import App, ComposeResult
 from textual.containers import VerticalScroll, Vertical, Container
 from textual.widgets import Button, Label, Input, LoadingIndicator, TextArea
 from concurrent.futures import Future
-import src.anki
+from src import anki
 from src.source_manager import SourceManager
 try:
     from .flashcard_model import FlashcardModel
@@ -117,7 +117,7 @@ class Chat(App):
 
         self.proposal_counter += 1
         card = self.pending_cards[0]
-        self.proposal_container = Container(
+        proposal_widgets = [
             Label(f"Proposal {self.proposal_counter}", classes="model-text"),
             Label(f"Question: ", classes="proposal-label"),
             TextArea(
@@ -136,7 +136,14 @@ class Chat(App):
                 id="proposal-answer",
             ),
             Label(f"Source: {card.source}", classes="proposal-label"),
-            classes="proposal-container"
+        ]
+        if not self.source_manager.is_source_valid(card.source):
+            invalid_source_label = Label("Issues validating source path to source file, if added the card source will not be tracked for sychronization.", classes="source-validation-label")
+            proposal_widgets.append(invalid_source_label)
+
+        self.proposal_container = Container(
+            *proposal_widgets,
+            classes="proposal-container",
         )
         self.chat_container.mount(self.proposal_container)
 

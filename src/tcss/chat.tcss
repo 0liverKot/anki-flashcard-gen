@@ -71,3 +71,8 @@
 .proposal-label {
     color: hsl(0, 0%, 70%)
 }
+
+.source-validation-label {
+    margin-top: 1;
+    color: hsl(0, 0%, 60%)
+}

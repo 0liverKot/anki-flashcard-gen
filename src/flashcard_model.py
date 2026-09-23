@@ -59,7 +59,7 @@ class FlashcardModel:
             "front": "Question",
             "back": "Answer",
             "tags": "topic",
-            "source": "source"
+            "source": "source path"
             }}
         ]
         }}                

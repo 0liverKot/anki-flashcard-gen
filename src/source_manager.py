@@ -14,3 +14,6 @@ class SourceManager:
 
     def get_current_source_json(self) -> str:
         return self.current_source_json
+    
+    def is_source_valid(self, source: str) -> bool:
+        return False
