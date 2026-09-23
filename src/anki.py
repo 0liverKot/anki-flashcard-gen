@@ -1,7 +1,7 @@
 import json 
 import urllib.request
 from typing import List
-from schemas import Card
+from src.schemas import Card
 
 def request(action, **params):
     return {'action': action, 'params': params, 'version': 6}

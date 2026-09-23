@@ -5,7 +5,8 @@ from textual.app import App, ComposeResult
 from textual.containers import VerticalScroll, Vertical, Container
 from textual.widgets import Button, Label, Input, LoadingIndicator, TextArea
 from concurrent.futures import Future
-import anki
+import src.anki
+from src.source_manager import SourceManager
 try:
     from .flashcard_model import FlashcardModel
     from .schemas import Card, Response_Schema
@@ -14,11 +15,15 @@ except ImportError:
     from schemas import Card, Response_Schema
 
 class Chat(App):
+    
     CSS_PATH = str(Path(__file__).parent / "tcss" / "chat.tcss")
 
     def __init__(self) -> None:
         super().__init__()
+        
         self.model = FlashcardModel()
+        self.source_manager = SourceManager()
+
         self.attempts_remaining = 3
         self.pending_cards: List[Card] = []
         self.accepted_cards: List[Card] = []
@@ -70,7 +75,7 @@ class Chat(App):
     def send_prompt(self, prompt: str) -> None:
         self.loading_response.styles.display = 'block'
 
-        response_future = self.model.generate_response(prompt)
+        response_future = self.model.generate_response(self.source_manager.get_current_source_json(), prompt)
         response_future.add_done_callback(lambda future: self.handle_response(prompt, future))
 
 
