@@ -124,6 +124,7 @@ class Chat(App):
                 f"{card.front}",
                 read_only=True,
                 show_cursor=False,
+                disabled=True,
                 classes="proposal-text-area",
                 id="proposal-question",
             ),
@@ -132,6 +133,7 @@ class Chat(App):
                 f"{card.back}",
                 read_only=True,
                 show_cursor=False,
+                disabled=True,
                 classes="proposal-text-area",
                 id="proposal-answer",
             ),
@@ -255,6 +257,8 @@ class Chat(App):
 
         question_text_area.read_only = False
         answer_text_area.read_only = False
+        question_text_area.disabled = False
+        answer_text_area.disabled = False
         question_text_area.show_cursor = True
         answer_text_area.show_cursor = True
 
@@ -289,6 +293,8 @@ class Chat(App):
         question_text_area.text = self.original_question
         answer_text_area.text = self.original_answer
 
+        question_text_area.disabled = True
+        answer_text_area.disabled = True
         self.user_container.remove_children()
         self.display_approval_options()
 
