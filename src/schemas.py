@@ -19,3 +19,12 @@ class Judge_Schema(BaseModel):
     clarity: int = Field(ge=0, le=2)
     overall: int = Field(ge=0, le=2)
     explanation: str
+
+
+class Card_Source_Schema(BaseModel):
+    card_id: int
+    source_document: str
+    source_section: List[str]
+    source_excerpt: str
+    source_hash: str
+       

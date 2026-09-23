@@ -6,6 +6,7 @@ from textual.containers import VerticalScroll, Vertical, Container
 from textual.widgets import Button, Label, Input, LoadingIndicator, TextArea
 from concurrent.futures import Future
 from src import anki
+from src.db.db import DB
 from src.source_manager import SourceManager
 try:
     from .flashcard_model import FlashcardModel
@@ -22,7 +23,9 @@ class Chat(App):
         super().__init__()
         
         self.model = FlashcardModel()
-        self.source_manager = SourceManager()
+
+        db = DB()
+        self.source_manager = SourceManager(db)
 
         self.attempts_remaining = 3
         self.pending_cards: List[Card] = []
@@ -154,7 +157,9 @@ class Chat(App):
 
     def display_proposals_complete(self) -> None:
 
+        
         if len(self.accepted_cards) != 0:
+            self.source_manager.add_card_sources(self.accepted_cards)
             anki.add_cards(self.accepted_cards)
 
         self.query_one("#finished-generating").remove()
