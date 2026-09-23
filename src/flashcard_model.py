@@ -50,7 +50,7 @@ class FlashcardModel:
         - Keep answers concise but complete.
         - Do not invent information absent from the source.
         - The tag must describe the card using one of the following options: Definition, Explanation, Advantages, Disadvantages, Evaluation or Other
-        - sources must contain the full path 
+        - The source for the flashcard must be the exact same as labelled in the source json provided
 
         Return JSON in this exact shape:
         {{

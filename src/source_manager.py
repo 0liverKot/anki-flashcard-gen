@@ -15,5 +15,14 @@ class SourceManager:
     def get_current_source_json(self) -> str:
         return self.current_source_json
     
-    def is_source_valid(self, source: str) -> bool:
+    def is_source_valid(self, source: str, debug=False) -> bool:
+        for dict in self.current_source_dict:
+            if dict.get("source") == source:
+                return True
+
+        if debug:
+            for dict in self.current_source_dict:
+                print(dict.get("source"))
+                print(source)
+                print("\n")
         return False
