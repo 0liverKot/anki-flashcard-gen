@@ -4,7 +4,7 @@ class DB:
 
     def __init__(self) -> None:
         
-        self.sqliteConnection = sqlite3.connect('card_sources.db')
+        self.sqliteConnection = sqlite3.connect('card_sources.db', check_same_thread=False)
         self.cursor = self.sqliteConnection.cursor()
 
         self.cursor.execute(

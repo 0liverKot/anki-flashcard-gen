@@ -1,9 +1,11 @@
 from pathlib import Path
-from typing import List
+import time
+from typing import List, cast
 from pydantic import ValidationError
 from textual.app import App, ComposeResult
 from textual.containers import VerticalScroll, Vertical, Container, Horizontal
 from textual.widgets import Button, Label, Input, LoadingIndicator, TextArea
+from textual.worker import Worker, WorkerState
 from concurrent.futures import Future
 from src import anki
 from src.db.db import DB
@@ -78,7 +80,7 @@ class Chat(App):
             self.display_prompt(prompt)
             
             if prompt == "/sourcesync":
-                self.source_sync()
+                self.run_source_sync()
                 return
             
             self.send_prompt(prompt)
@@ -357,17 +359,51 @@ class Chat(App):
                     )
 
 
-    def source_sync(self) -> None:
+    def run_source_sync(self) -> None:
         self.chat_container.mount(
             Label("Checking synchronisation between generated cards and their sources", classes="model-text"),
             before=self.loading_response
         )
         self.loading_response.styles.display = 'block'
-        unsynced = self.source_manager.synchronise()
-        self.chat_container.mount(
-            Label(f"Unsynced cards: f{unsynced}")
-        )
+        self.run_worker(self._run_source_sync, name="source-sync", thread=True)
         return
+    
+    def _run_source_sync(self) -> List[int]:
+        return self.source_manager.synchronise()
+
+    def on_worker_state_changed(self, event: Worker.StateChanged) -> None:
+        worker = event.worker
+        if worker.name != "source-sync":
+            return
+        
+        if event.state != WorkerState.SUCCESS:
+            return
+        
+        time.sleep(1)
+
+        worker = cast(Worker[List[int]], event.worker)
+        desynced = worker.result
+
+        if not desynced or len(desynced) == 0:
+            self.chat_container.mount(
+                Label("0 desynced cards found", classes="model-text"),
+                before=self.loading_response
+            )
+            self.loading_response.styles.display = "none"
+            input= self.query_one("#prompt-input")
+            input.disabled = False
+            input.focus()
+        else: 
+            self.chat_container.mount(
+                Label(f"{len(desynced)} desynced cards found", classes="model-text"),
+                before=self.loading_response
+            )
+            self.loading_response.styles.display = "none"
+            input= self.query_one("#prompt-input")
+            input.disabled = False
+            input.focus()
+            
+
 
 if __name__ == "__main__":
     Chat().run()

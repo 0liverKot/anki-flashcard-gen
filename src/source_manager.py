@@ -103,7 +103,7 @@ class SourceManager:
         self.db.sqliteConnection.commit()
 
     
-    def synchronise(self):
+    def synchronise(self) -> List[int]:
         
         card_sources = self.get_card_sources()
         unsynced = list()
