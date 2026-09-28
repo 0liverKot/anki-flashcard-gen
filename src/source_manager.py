@@ -44,7 +44,7 @@ class SourceManager:
         ).hexdigest()
 
 
-    def add_card_sources(self, cards: List[Card]):
+    def add_card_sources(self, cards: List[Card], card_ids: List[int]):
 
         def create_card_source(card: Card, id: int) -> Card_Source_Schema | None:
             for dict in self.current_source_dict:
@@ -66,11 +66,10 @@ class SourceManager:
             return None
 
 
-        ids = list(range(100))
         index = 0
         rows = []
         for card in cards:
-            card_id = ids[index]
+            card_id = card_ids[index]
             card_source = create_card_source(card, card_id)
 
             index += 1

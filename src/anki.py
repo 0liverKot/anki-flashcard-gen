@@ -22,6 +22,7 @@ def invoke(action, **params):
 
 
 def add_cards(cards: List[Card]):
+    card_ids = list()
     for card in cards:
         flashcard = {
             "deckName": "Test",
@@ -32,4 +33,6 @@ def add_cards(cards: List[Card]):
             },
             "tags": card.tags
         }
-        invoke(action="addNote", note=flashcard)
+        card_id = invoke(action="addNote", note=flashcard)
+        card_ids.append(card_id)
+    return card_ids

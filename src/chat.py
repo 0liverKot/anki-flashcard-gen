@@ -159,8 +159,8 @@ class Chat(App):
 
         
         if len(self.accepted_cards) != 0:
-            self.source_manager.add_card_sources(self.accepted_cards)
-            anki.add_cards(self.accepted_cards)
+            card_ids = anki.add_cards(self.accepted_cards)
+            self.source_manager.add_card_sources(self.accepted_cards, card_ids)
 
         self.query_one("#finished-generating").remove()
 
