@@ -161,3 +161,23 @@ class SourceManager:
                     sources[id] = d.get("content")
         
         return sources
+    
+
+    def update_sources(self, ids: List[int], cards: List[Card]) -> None:
+        for id, card in zip(ids, cards):
+        
+            for dict in self.current_source_dict:
+                if dict.get("source") == card.source:
+                    source_excerpt = dict.get("content")
+                    hashed_source_exerpt = self.hash_excerpt(source_excerpt)
+
+            self.db.cursor.execute(
+                """
+                UPDATE card_sources
+                SET source_excerpt = ?, source_hash = ? 
+                WHERE card_id = ?                
+                """,
+                (source_excerpt, hashed_source_exerpt, id)
+            )
+            self.db.sqliteConnection.commit()
+                

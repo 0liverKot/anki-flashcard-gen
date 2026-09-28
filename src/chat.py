@@ -45,6 +45,9 @@ class Chat(App):
         self.original_question: str = ""
         self.original_answer: str = ""
         self.command_options = ["/sourcesync - synchronise generated cards against their sources"]
+        self.syncing_cards = False
+        self.syncing_card_ids: List[int] = [] 
+        self.accepted_descyned_ids: List[int] = []
 
     def compose(self) -> ComposeResult:
 
@@ -84,6 +87,7 @@ class Chat(App):
             self.hide_command_options()
             event.input.clear()
             event.input.disabled = True
+            self.query_one("#tooltips-container").remove()
             
             self.display_prompt(prompt)
             
@@ -132,13 +136,25 @@ class Chat(App):
         if self.proposal_container is not None:
             self.proposal_container.remove()
             self.proposal_container = None
-            
-        if not self.pending_cards:
-            self.display_proposals_complete()
-            return
+        
+        if self.syncing_cards:
+            if not self.pending_desynced_cards:
+                self.display_proposals_complete()
+                return
+        else: 
+            if not self.pending_cards:
+                self.display_proposals_complete()
+                return
 
         self.proposal_counter += 1
-        card = self.pending_cards[0]
+
+        if self.syncing_cards:
+            card = self.pending_desynced_cards.get(self.syncing_card_ids[0])
+            if not card:
+                return
+        else: 
+            card = self.pending_cards[0]
+        
         proposal_widgets = [
             Label(f"Proposal {self.proposal_counter}", classes="model-text"),
             Label(f"Question: ", classes="proposal-label"),
@@ -161,7 +177,9 @@ class Chat(App):
             ),
             Label(f"Source: {card.source}", classes="proposal-label"),
         ]
-        if not self.source_manager.is_source_valid(card.source):
+        
+        # cards from synchronisation will have a valid source associated with them
+        if not self.syncing_cards and self.source_manager.is_source_valid(card.source):
             invalid_source_label = Label("Issues validating source path to source file, if added the card source will not be tracked for sychronization.", classes="source-validation-label")
             proposal_widgets.append(invalid_source_label)
 
@@ -177,8 +195,13 @@ class Chat(App):
     def display_proposals_complete(self) -> None:
 
         if len(self.accepted_cards) != 0:
-            card_ids = anki.add_cards(self.accepted_cards)
-            self.source_manager.add_card_sources(self.accepted_cards, card_ids)
+
+            if self.syncing_cards:
+                anki.update_cards(self.accepted_descyned_ids, self.accepted_cards)
+                self.source_manager.update_sources(self.accepted_descyned_ids, self.accepted_cards)
+            else: 
+                card_ids = anki.add_cards(self.accepted_cards)
+                self.source_manager.add_card_sources(self.accepted_cards, card_ids)
 
         self.query_one("#finished-generating").remove()
 
@@ -195,10 +218,8 @@ class Chat(App):
         self.user_container.border_title = None
         self.user_container.remove_children()
 
-        command_options = Vertical(id="command-options")
         input = Input("", id="prompt-input")
         self.user_container.mount_all([
-            command_options,
             input,
             self.create_tooltips_container()
         ])
@@ -255,7 +276,7 @@ class Chat(App):
 
     
     def on_button_pressed(self, event: Button.Pressed) -> None:
-        if not self.pending_cards:
+        if not self.pending_cards and not self.pending_desynced_cards:
             return
 
         match event.button.id:
@@ -272,7 +293,14 @@ class Chat(App):
 
 
     def on_accept_proposal(self):
-        self.accepted_cards.append(self.pending_cards.pop(0))
+        if self.syncing_cards:
+            card_id = self.syncing_card_ids.pop(0)    
+            card = self.pending_desynced_cards.pop(card_id)
+            self.accepted_descyned_ids.append(card_id)
+        else:
+            card = self.pending_cards.pop(0)
+
+        self.accepted_cards.append(card)
         self.show_next_proposal()
 
 
@@ -297,7 +325,10 @@ class Chat(App):
 
 
     def on_reject_proposal(self):
-        self.pending_cards.pop(0)
+        if self.syncing_cards:
+            self.pending_desynced_cards.pop(self.syncing_card_ids.pop(0))
+        else:
+            self.pending_cards.pop(0)
         self.show_next_proposal()
 
 
@@ -305,7 +336,13 @@ class Chat(App):
         question_text_area = self.query_one("#proposal-question", TextArea)
         answer_text_area = self.query_one("#proposal-answer", TextArea)
         
-        card = self.pending_cards.pop(0)
+        if self.syncing_cards:
+            card_id = self.syncing_card_ids.pop(0)
+            card = self.pending_desynced_cards.pop(card_id)
+            self.accepted_descyned_ids.append(card_id)
+        else:
+            card = self.pending_cards.pop(0)
+
         card.front = question_text_area.text.strip()
         card.back = answer_text_area.text.strip()
 
@@ -410,6 +447,9 @@ class Chat(App):
             
 
     def handle_desynced_cards_found(self, desynced_ids: List[int]) -> None:
+        
+        self.syncing_cards = True
+        self.syncing_card_ids = desynced_ids
 
         source_paths = self.source_manager.get_source_paths(desynced_ids)
         new_sources = self.source_manager.get_sources(source_paths)
@@ -428,6 +468,11 @@ class Chat(App):
     def handle_single_card_received(self, id: int, response: Card) -> None:
         self.pending_desynced_cards[id] = response
         self.log(self.pending_desynced_cards)
+        
+        if len(self.pending_desynced_cards) == len(self.syncing_card_ids):
+            self.loading_response.styles.display = 'none'
+            self.chat_container.mount(Label("I have finished revising your desynced flashcards, just waiting for your approval now!", classes="model-text", id='finished-generating'))
+            self.show_next_proposal()
 
 if __name__ == "__main__":
     Chat().run()
