@@ -87,7 +87,9 @@ class Chat(App):
             self.hide_command_options()
             event.input.clear()
             event.input.disabled = True
-            self.query_one("#tooltips-container").remove()
+            tooltips = self.query("#tooltips-container")
+            if tooltips:
+                tooltips.first().remove()
             
             self.display_prompt(prompt)
             
@@ -216,7 +218,7 @@ class Chat(App):
         self.chat_container.mount(complete_label, before=self.loading_response)
         
         self.user_container.border_title = None
-        self.user_container.remove_children()
+        self.user_container.query(".approval-option-button").remove()
 
         input = Input("", id="prompt-input")
         self.user_container.mount_all([
@@ -254,6 +256,7 @@ class Chat(App):
         self.chat_container.mount(error_label, before=self.loading_response)
         self.attempts_remaining = 3
         
+        self.ensure_tooltips_container()
         input = self.query_one('#prompt-input')
         input.disabled = False
         input.focus()
@@ -403,6 +406,10 @@ class Chat(App):
                     id="tooltips-container"
                     )
 
+    def ensure_tooltips_container(self) -> None:
+        if not self.query("#tooltips-container"):
+            self.user_container.mount(self.create_tooltips_container())
+
 
     def run_source_sync(self) -> None:
         self.chat_container.mount(
@@ -435,6 +442,7 @@ class Chat(App):
                 before=self.loading_response
             )
             self.loading_response.styles.display = "none"
+            self.ensure_tooltips_container()
             input= self.query_one("#prompt-input")
             input.disabled = False
             input.focus()
