@@ -475,7 +475,6 @@ class Chat(App):
 
     def handle_single_card_received(self, id: int, response: Card) -> None:
         self.pending_desynced_cards[id] = response
-        self.log(self.pending_desynced_cards)
         
         if len(self.pending_desynced_cards) == len(self.syncing_card_ids):
             self.loading_response.styles.display = 'none'

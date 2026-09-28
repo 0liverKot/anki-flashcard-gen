@@ -7,13 +7,6 @@ try:
 except ModuleNotFoundError:
     from schemas import Card
 
-import logging 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s %(levelname)s %(name)s: %(message)s",
-)
-logger = logging.getLogger(__name__)
-
 def request(action, **params):
     return {'action': action, 'params': params, 'version': 6}
 
@@ -65,13 +58,4 @@ def update_cards(ids: List[int], cards: List[Card]) -> None:
             },
         }
 
-        logger.info("Updating note %s with %s", note_id, note)
-        result = invoke("updateNote", note=note)
-        logger.info("AnkiConnect response for note %s: %r", note_id, result)
-
-        updated = invoke("notesInfo", notes=[note_id])[0]
-        logger.info(
-            "Updated fields: Front=%r Back=%r",
-            updated["fields"]["Front"]["value"],
-            updated["fields"]["Back"]["value"],
-        )
+        invoke("updateNote", note=note)
