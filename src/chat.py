@@ -34,7 +34,7 @@ class Chat(App):
         self.proposal_counter = 0
         self.original_question: str = ""
         self.original_answer: str = ""
-        self.command_options = ["/sourcesync - synchronise generated cards against their sources", "/help", "/testing"]
+        self.command_options = ["/sourcesync - synchronise generated cards against their sources"]
 
     def compose(self) -> ComposeResult:
 
@@ -74,8 +74,13 @@ class Chat(App):
             self.hide_command_options()
             event.input.clear()
             event.input.disabled = True
-
+            
             self.display_prompt(prompt)
+            
+            if prompt == "/sourcesync":
+                self.source_sync()
+                return
+            
             self.send_prompt(prompt)
 
 
@@ -161,7 +166,6 @@ class Chat(App):
 
     def display_proposals_complete(self) -> None:
 
-        
         if len(self.accepted_cards) != 0:
             card_ids = anki.add_cards(self.accepted_cards)
             self.source_manager.add_card_sources(self.accepted_cards, card_ids)
@@ -351,6 +355,19 @@ class Chat(App):
                     Label("● / Commands", classes="shortcut-tooltip"),
                     id="tooltips-container"
                     )
+
+
+    def source_sync(self) -> None:
+        self.chat_container.mount(
+            Label("Checking synchronisation between generated cards and their sources", classes="model-text"),
+            before=self.loading_response
+        )
+        self.loading_response.styles.display = 'block'
+        unsynced = self.source_manager.synchronise()
+        self.chat_container.mount(
+            Label(f"Unsynced cards: f{unsynced}")
+        )
+        return
 
 if __name__ == "__main__":
     Chat().run()

@@ -10,7 +10,7 @@ import json
 
 class SourceManager:
     def __init__(self, db: DB) -> None:
-        self.current_source_path = Path(__file__).parent / "notes" / "waves_and_particle_nature_of_light.md"
+        self.current_source_path = Path(__file__).parent / "notes" / "unsynced_notes.md"
 
         self.current_source_json, self.current_source_dict = md_parse(self.current_source_path)
 
@@ -38,7 +38,10 @@ class SourceManager:
         return False
     
 
-    def hash_excerpt(self, excerpt: str) -> str:
+    def hash_excerpt(self, excerpt: str | None) -> str:
+        if not excerpt:
+            return ""
+        
         return hashlib.sha256(
             excerpt.encode("utf-8")
         ).hexdigest()
@@ -98,3 +101,27 @@ class SourceManager:
             Values(?, ?, ?, ?, ?)""", 
             rows)
         self.db.sqliteConnection.commit()
+
+    
+    def synchronise(self):
+        
+        card_sources = self.get_card_sources()
+        unsynced = list()
+        for card_source in card_sources:
+            id, source_document, source_section, source_hash = card_source
+            source_path = " > ".join([source_document, *json.loads(source_section)])
+
+            for dict in self.current_source_dict:
+                if dict.get("source") == source_path and self.hash_excerpt(dict.get("content")) != source_hash:
+                    unsynced.append(id)
+                    break
+
+        return unsynced
+        
+
+    def get_card_sources(self):
+        card_sources = self.db.cursor.execute("""
+            SELECT card_id, source_document, source_section, source_hash
+            FROM card_sources        
+            """).fetchall()
+        return card_sources
