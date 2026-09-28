@@ -14,6 +14,22 @@
     margin-bottom: 2
 }
 
+#tooltips-container {
+    height: auto;
+    margin-top: 1;
+}
+
+#command-options {
+    display: none;
+    height: auto;
+    margin-bottom: 1;
+}
+
+.command-option {
+    color: hsl(0, 0%, 70%);
+    padding-left: 1;
+}
+
 .response {
     margin-bottom: 2
 }
@@ -74,4 +90,10 @@
 .source-validation-label {
     margin-top: 1;
     color: hsl(0, 0%, 60%)
+}
+
+.shortcut-tooltip {
+    color: hsl(0, 0%, 60%);
+    margin-left: 1;
+    margin-right: 2;
 }

@@ -2,7 +2,7 @@ from pathlib import Path
 from typing import List
 from pydantic import ValidationError
 from textual.app import App, ComposeResult
-from textual.containers import VerticalScroll, Vertical, Container
+from textual.containers import VerticalScroll, Vertical, Container, Horizontal
 from textual.widgets import Button, Label, Input, LoadingIndicator, TextArea
 from concurrent.futures import Future
 from src import anki
@@ -34,6 +34,7 @@ class Chat(App):
         self.proposal_counter = 0
         self.original_question: str = ""
         self.original_answer: str = ""
+        self.command_options = ["/sourcesync - synchronise generated cards against their sources", "/help", "/testing"]
 
     def compose(self) -> ComposeResult:
 
@@ -45,7 +46,9 @@ class Chat(App):
         )
 
         self.user_container = Vertical(
+            Vertical(id="command-options"),
             Input("",id="prompt-input"),
+            self.create_tooltips_container(),
             id="user-container"
         )
 
@@ -68,6 +71,7 @@ class Chat(App):
             if not prompt:
                 return
 
+            self.hide_command_options()
             event.input.clear()
             event.input.disabled = True
 
@@ -176,9 +180,14 @@ class Chat(App):
         
         self.user_container.border_title = None
         self.user_container.remove_children()
-        
+
+        command_options = Vertical(id="command-options")
         input = Input("", id="prompt-input")
-        self.user_container.mount(input)
+        self.user_container.mount_all([
+            command_options,
+            input,
+            self.create_tooltips_container()
+        ])
         input.disabled = False
         input.focus()
 
@@ -303,6 +312,45 @@ class Chat(App):
         self.user_container.remove_children()
         self.display_approval_options()
 
+
+    def on_input_changed(self, event: Input.Changed) -> None:
+        if event.input.id != "prompt-input":
+            return
+
+        command_options = self.query_one("#command-options", Vertical)
+        command_options.remove_children()
+
+        if not event.value.startswith("/"):
+            command_options.display = False
+            return
+
+        matching_commands = [
+            command for command in self.command_options
+            if command.lower().startswith(event.value.lower())
+        ]
+        if not matching_commands:
+            command_options.display = False
+            return
+
+        command_options.mount_all(
+            Label(command, classes="command-option")
+            for command in matching_commands
+        )
+        command_options.display = True
+
+
+    def hide_command_options(self) -> None:
+        command_options = self.query("#command-options")
+        if command_options:
+            command_options.first().display = False
+
+
+    def create_tooltips_container(self) -> Horizontal:
+        return Horizontal(
+                    Label("● Ctrl-q Exit", classes="shortcut-tooltip"),
+                    Label("● / Commands", classes="shortcut-tooltip"),
+                    id="tooltips-container"
+                    )
 
 if __name__ == "__main__":
     Chat().run()
