@@ -3,7 +3,11 @@ from collections.abc import Mapping
 from typing import Any\
 
 import markdown_to_json
-from src.type_aliases import SourceFile
+
+try: 
+    from src.type_aliases import SourceFile
+except ModuleNotFoundError:
+    from type_aliases import SourceFile
 
 def flatten_markdown(document: Mapping[str, Any]) -> list[dict[str, str]]:
     """Convert markdown_to_json's nested result into source/content sections.

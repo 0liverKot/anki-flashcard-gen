@@ -7,9 +7,16 @@ from textual.containers import VerticalScroll, Vertical, Container, Horizontal
 from textual.widgets import Button, Label, Input, LoadingIndicator, TextArea
 from textual.worker import Worker, WorkerState
 from concurrent.futures import Future
-from src import anki
-from src.db.db import DB
-from src.source_manager import SourceManager
+
+try:
+    from src import anki
+    from src.db.db import DB
+    from src.source_manager import SourceManager
+except ModuleNotFoundError:
+    import anki 
+    from db.db import DB
+    from source_manager import SourceManager
+
 try:
     from .flashcard_model import FlashcardModel
     from .schemas import Card, Response_Schema
@@ -398,11 +405,17 @@ class Chat(App):
                 Label(f"{len(desynced)} desynced cards found", classes="model-text"),
                 before=self.loading_response
             )
-            self.loading_response.styles.display = "none"
-            input= self.query_one("#prompt-input")
-            input.disabled = False
-            input.focus()
+            self.handle_desynced_cards_found(desynced)
             
+
+    def handle_desynced_cards_found(self, desynced_ids: List[int]) -> None:
+
+        source_paths = self.source_manager.get_source_paths(desynced_ids)
+        new_sources = self.source_manager.get_sources(source_paths)
+
+        self.log(f"source_paths: {source_paths}")
+        self.log(f"new_sources: {new_sources}")
+
 
 
 if __name__ == "__main__":

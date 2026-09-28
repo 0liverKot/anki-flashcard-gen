@@ -1,12 +1,18 @@
 from pathlib import Path
-from src.db.db import DB
-from src.md_parser import md_parse
-from src.type_aliases import SourceFile
-from typing import List
-from src.schemas import Card, Card_Source_Schema
+from typing import Dict, List
 import hashlib
 import json
 
+try: 
+    from src.db.db import DB
+    from src.md_parser import md_parse
+    from src.type_aliases import SourceFile
+    from src.schemas import Card, Card_Source_Schema
+except ModuleNotFoundError:
+    from db.db import DB
+    from md_parser import md_parse
+    from type_aliases import SourceFile
+    from schemas import Card, Card_Source_Schema
 
 class SourceManager:
     def __init__(self, db: DB) -> None:
@@ -125,3 +131,33 @@ class SourceManager:
             FROM card_sources        
             """).fetchall()
         return card_sources
+    
+
+    def get_source_paths(self, ids: List[int]) -> Dict[int, str]:
+        placeholders = ",".join("?" for _ in ids)
+
+        rows = self.db.cursor.execute(f"""
+            SELECT card_id, source_document, source_section
+            FROM card_sources
+            WHERE card_id IN ({placeholders})
+            """,
+            ids).fetchall()
+        
+        source_paths = dict()
+        for id, source_document, source_section in rows:
+            source_path = " > ".join([source_document, *json.loads(source_section)])
+
+            source_paths[id] = source_path
+
+        return source_paths
+    
+
+    def get_sources(self, source_paths: Dict[int, str]) -> Dict[int, str]:
+        
+        sources = dict()
+        for id, path in source_paths.items():
+            for d in self.current_source_dict:
+                if d.get("source") == path:
+                    sources[id] = d.get("content")
+        
+        return sources
