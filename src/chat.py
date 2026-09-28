@@ -39,6 +39,7 @@ class Chat(App):
         self.attempts_remaining = 3
         self.pending_cards: List[Card] = []
         self.accepted_cards: List[Card] = []
+        self.pending_desynced_cards: dict[int, Card] = dict()
         self.proposal_container: Container | None = None
         self.proposal_counter = 0
         self.original_question: str = ""
@@ -402,7 +403,7 @@ class Chat(App):
             input.focus()
         else: 
             self.chat_container.mount(
-                Label(f"{len(desynced)} desynced cards found", classes="model-text"),
+                Label(f"{len(desynced)} desynced cards found, generating revised versions", classes="model-text"),
                 before=self.loading_response
             )
             self.handle_desynced_cards_found(desynced)
@@ -412,11 +413,21 @@ class Chat(App):
 
         source_paths = self.source_manager.get_source_paths(desynced_ids)
         new_sources = self.source_manager.get_sources(source_paths)
+        
+        for id, path in source_paths.items(): 
 
-        self.log(f"source_paths: {source_paths}")
-        self.log(f"new_sources: {new_sources}")
+            response_future = self.model.generate_single_card(id, path, new_sources[id])
+            response_future.add_done_callback(lambda future, card_id=id: self.handle_single_card_generated(card_id, future))
 
 
+    def handle_single_card_generated(self, id: int, future: Future[Card]) -> None:
+        response = future.result()
+        self.call_from_thread(self.handle_single_card_received, id, response) 
+
+
+    def handle_single_card_received(self, id: int, response: Card) -> None:
+        self.pending_desynced_cards[id] = response
+        self.log(self.pending_desynced_cards)
 
 if __name__ == "__main__":
     Chat().run()

@@ -35,8 +35,14 @@ def add_cards(cards: List[Card]):
                 "Front": card.front,
                 "Back": card.back
             },
-            "tags": card.tags
         }
         card_id = invoke(action="addNote", note=flashcard)
         card_ids.append(card_id)
     return card_ids
+
+
+def get_question(id: int):
+    
+    question_result = invoke(action="notesInfo", notes=[id])
+
+    return question_result[0]['fields']['Front']['value']

@@ -4,12 +4,15 @@ from typing import List
 class Card(BaseModel):
     front: str
     back: str
-    tags: str
     source: str
 
 
 class Response_Schema(BaseModel):
     cards: List[Card]
+
+
+class Single_Card_Response_Schema(BaseModel):
+    answer: str
 
 
 class Judge_Schema(BaseModel):
