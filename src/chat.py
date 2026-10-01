@@ -10,18 +10,20 @@ from concurrent.futures import Future
 
 try:
     from src import anki
-    from src.db.db import DB
-    from src.source_manager import SourceManager
+    from src.db.db import DB, VectorDB
+    from src.managers.source_manager import SourceManager
+    from src.managers.duplicate_manager import DuplicateManager
 except ModuleNotFoundError:
     import anki 
-    from db.db import DB
-    from source_manager import SourceManager
+    from db.db import DB, VectorDB
+    from managers.source_manager import SourceManager
+    from managers.duplicate_manager import DuplicateManager
 
 try:
-    from .flashcard_model import FlashcardModel
+    from .models.flashcard_model import FlashcardModel
     from .schemas import Card, Response_Schema
 except ImportError:
-    from flashcard_model import FlashcardModel
+    from src.models.flashcard_model import FlashcardModel
     from schemas import Card, Response_Schema
 
 class Chat(App):
@@ -34,8 +36,10 @@ class Chat(App):
         self.model = FlashcardModel()
 
         db = DB()
-        self.source_manager = SourceManager(db)
+        vector_db = VectorDB()
 
+        self.source_manager = SourceManager(db)
+        self.duplicate_manager = DuplicateManager(vector_db)
         self.attempts_remaining = 3
         self.pending_cards: List[Card] = []
         self.accepted_cards: List[Card] = []
@@ -204,6 +208,7 @@ class Chat(App):
             else: 
                 card_ids = anki.add_cards(self.accepted_cards)
                 self.source_manager.add_card_sources(self.accepted_cards, card_ids)
+                self.duplicate_manager.add_cards(self.accepted_cards)
 
         self.query_one("#finished-generating").remove()
 

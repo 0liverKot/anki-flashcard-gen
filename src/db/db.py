@@ -1,4 +1,24 @@
 import sqlite3
+from pathlib import Path
+
+import sqlite_vector
+
+
+def load_vector_extension(connection: sqlite3.Connection) -> None:
+    extension_path = (
+        Path(sqlite_vector.__file__).parent / "binaries" / "vector.so"
+    )
+
+    if not extension_path.is_file():
+        raise FileNotFoundError(
+            f"sqlite-vector extension was not found at {extension_path}"
+        )
+
+    connection.enable_load_extension(True)
+    try:
+        connection.load_extension(str(extension_path))
+    finally:
+        connection.enable_load_extension(False)
 
 class DB:
 
@@ -25,6 +45,7 @@ class VectorDB:
     def __init__(self) -> None:
 
         self.sqliteConnection = sqlite3.connect('card_embeddings.db', check_same_thread=False)
+        load_vector_extension(self.sqliteConnection)
         self.cursor = self.sqliteConnection.cursor()
 
         # combined embedding stores both question and answer in the following format:
@@ -36,7 +57,7 @@ class VectorDB:
                 rowid INTEGER PRIMARY KEY,
                 question TEXT NOT NULL,
                 answer TEXT NOT NULL, 
-                combined_embedding BLOB
+                combined_embedding BLOB NOT NULL
             )            
             """
         )
@@ -44,10 +65,9 @@ class VectorDB:
         self.cursor.execute(
             """
             SELECT vector_init(
-                "card_embeddings",
-                "combined_embdedding",
-                "dimension=1024,type=FLOAT,distance=COSINE"
+                'card_embeddings',
+                'combined_embedding',
+                'dimension=1024,type=FLOAT32,distance=COSINE'
             )
             """
         )
-

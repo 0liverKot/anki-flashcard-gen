@@ -16,7 +16,7 @@ except ModuleNotFoundError:
 
 class SourceManager:
     def __init__(self, db: DB) -> None:
-        self.current_source_path = Path(__file__).parent / "notes" / "unsynced_notes.md"
+        self.current_source_path = Path(__file__).parent / ".." / "notes" / "unsynced_notes.md"
 
         self.current_source_json, self.current_source_dict = md_parse(self.current_source_path)
 

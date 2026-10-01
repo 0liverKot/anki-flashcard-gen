@@ -1,16 +1,16 @@
 from pathlib import Path
 
 try:
-    from ..flashcard_model import FlashcardModel
-    from .judge import Judge
+    from ..models.flashcard_model import FlashcardModel
+    from ..models.judge import Judge
     from ..schemas import Card, Judge_Schema
     from ..md_parser import md_to_json
 except ImportError:
     import sys
 
     sys.path.insert(0, str(Path(__file__).parents[1]))
-    from flashcard_model import FlashcardModel
-    from test.judge import Judge
+    from src.models.flashcard_model import FlashcardModel
+    from src.models.judge import Judge
     from schemas import Card, Judge_Schema
     from md_parser import md_to_json
 

@@ -1,4 +1,4 @@
-from src.source_manager import SourceManager
+from src.managers.source_manager import SourceManager
 
 
 def test_is_source_valid():

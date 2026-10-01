@@ -12,7 +12,7 @@ except ModuleNotFoundError:
     from schemas import Card
     import anki
 try:
-    from .schemas import Response_Schema, Single_Card_Response_Schema
+    from ..schemas import Response_Schema, Single_Card_Response_Schema
 except ImportError:
     from schemas import Response_Schema, Single_Card_Response_Schema
 
