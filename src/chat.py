@@ -1,6 +1,6 @@
 from pathlib import Path
 import time
-from typing import List, cast
+from typing import List, Tuple, cast
 from pydantic import ValidationError
 from textual.app import App, ComposeResult
 from textual.containers import VerticalScroll, Vertical, Container, Horizontal
@@ -41,7 +41,7 @@ class Chat(App):
         self.source_manager = SourceManager(db)
         self.duplicate_manager = DuplicateManager(vector_db)
         self.attempts_remaining = 3
-        self.pending_cards: List[Card] = []
+        self.pending_cards: List[Tuple[Card, Card | None]] = []
         self.accepted_cards: List[Card] = []
         self.pending_desynced_cards: dict[int, Card] = dict()
         self.proposal_container: Container | None = None
@@ -114,6 +114,9 @@ class Chat(App):
     def handle_response(self, prompt: str, future: Future[Response_Schema]) -> None:
         try: 
             response = future.result()
+            self.call_from_thread(self.finished_generation_message)
+            similar_cards = self.duplicate_manager.check_duplicates(response.cards)
+            self.call_from_thread(self.handle_response_received, response, similar_cards)
         except ValidationError: 
             if self.attempts_remaining == 0:
                 self.call_from_thread(self.display_max_retries_error)
@@ -121,26 +124,30 @@ class Chat(App):
                 self.call_from_thread(self.display_validation_error, prompt)
             return
 
-        # UI update must be done on Textual UI's thread
-        # handle_response is running on a background thread
-        self.call_from_thread(self.handle_response_received, response) 
+        except Exception as error:
+            self.call_from_thread(self.display_general_error, error)
 
 
-    def handle_response_received(self, response: Response_Schema) -> None:
+    def finished_generation_message(self) -> None: 
+        self.chat_container.mount(Label("I have finished generating your flashcards, checking for duplicates", classes="model-text", id='finished-generating'), before=self.loading_response)
 
-        self.loading_response.display = 'none'
 
-        self.pending_cards = response.cards
-        self.accepted_cards = []
+    def handle_response_received(self, response: Response_Schema, similar_cards: List[Card | None]) -> None:
+        try:
+            self.pending_cards = list(zip(response.cards, similar_cards))
+            self.accepted_cards = []
 
-        self.chat_container.mount(Label("I have finished generating your flashcards, just waiting for your approval now!", classes="model-text", id='finished-generating'))
+            self.loading_response.display = 'none'
 
-        self.show_next_proposal()
+            self.show_next_proposal()
+        except Exception as error:
+            self.display_general_error(error)
 
 
     def show_next_proposal(self) -> None:
-        if self.query_one(".source-validation-label"):
-            self.query_one(".source-validation-label").remove()
+        source_validation_label = self.query(".source-validation-label")
+        if source_validation_label:
+            source_validation_label.first().remove()
 
         if self.proposal_container is not None:
             self.proposal_container.remove()
@@ -162,8 +169,14 @@ class Chat(App):
             if not card:
                 return
         else: 
-            card = self.pending_cards[0]
+            card, similar_card = self.pending_cards[0]
+            if similar_card:
+                self.chat_container.mount(
+                    Label("Duplicate Detected"),
+                    Label(similar_card.front),
+                    Label(similar_card.back))
         
+
         proposal_widgets = [
             Label(f"Proposal {self.proposal_counter}", classes="model-text"),
             Label(f"Question: ", classes="proposal-label"),
@@ -270,6 +283,16 @@ class Chat(App):
         input.focus()
 
 
+    def display_general_error(self, error: Exception) -> None:
+        self.loading_response.styles.display = 'none'
+        error_label = Label(
+            f"Something went wrong: {type(error).__name__}: {error}",
+            classes="error",
+        )
+        self.chat_container.mount(error_label, before=self.loading_response)
+        self.attempts_remaining = 3
+
+
     def display_approval_options(self) -> None:
         if self.query("#accept-proposal"):
             return 
@@ -309,7 +332,7 @@ class Chat(App):
             card = self.pending_desynced_cards.pop(card_id)
             self.accepted_descyned_ids.append(card_id)
         else:
-            card = self.pending_cards.pop(0)
+            card, _ = self.pending_cards.pop(0)
 
         self.accepted_cards.append(card)
         self.show_next_proposal()
@@ -352,7 +375,7 @@ class Chat(App):
             card = self.pending_desynced_cards.pop(card_id)
             self.accepted_descyned_ids.append(card_id)
         else:
-            card = self.pending_cards.pop(0)
+            card, _ = self.pending_cards.pop(0)
 
         card.front = question_text_area.text.strip()
         card.back = answer_text_area.text.strip()
