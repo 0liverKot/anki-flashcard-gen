@@ -139,6 +139,9 @@ class Chat(App):
 
 
     def show_next_proposal(self) -> None:
+        if self.query_one(".source-validation-label"):
+            self.query_one(".source-validation-label").remove()
+
         if self.proposal_container is not None:
             self.proposal_container.remove()
             self.proposal_container = None
