@@ -18,7 +18,6 @@ except ModuleNotFoundError:
     from db.db import DB, VectorDB
     from managers.source_manager import SourceManager
     from managers.duplicate_manager import DuplicateManager
-
 try:
     from .models.flashcard_model import FlashcardModel
     from .schemas import Card, Response_Schema
