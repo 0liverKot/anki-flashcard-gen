@@ -32,14 +32,81 @@ class Card_Source_Schema(BaseModel):
     source_excerpt: str
     source_hash: str
 
-class NotebookData(BaseModel):
+class OneNoteMetadata(BaseModel):
     id: str
     self: str
     createdDateTime: datetime.datetime
     displayName: str
     lastModifiedDateTime: datetime.datetime
+
+class NotebookData(OneNoteMetadata):
     sectionsUrl: str
     sectionGroupsUrl: str
 
+class SectionData(OneNoteMetadata):
+    pagesUrl: str     
+
+class PageData(OneNoteMetadata):
+    contentUrl: str
+
+
     
-       
+from __future__ import annotations
+
+from typing import Annotated, Literal
+from pydantic import BaseModel, ConfigDict, Field
+
+
+class StrictModel(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+        validate_assignment=True,
+    )
+
+
+class OneNotePage(StrictModel):
+    type: Literal["page"] = "page"
+
+    id: str
+    title: str
+    content_url: str | None = None
+    parent_page_id: str | None = None
+
+class OneNoteSection(StrictModel):
+    type: Literal["section"] = "section"
+
+    id: str
+    name: str
+
+    parent_notebook_id: str | None = None
+    parent_section_group_id: str | None = None
+
+    pages: list[OneNotePage] = Field(default_factory=list)
+
+class OneNoteSectionGroup(StrictModel):
+    type: Literal["section_group"] = "section_group"
+
+    id: str
+    name: str
+    order: int = Field(ge=0)
+    
+    parent_notebook_id: str | None = None
+    parent_section_group_id: str | None = None
+    
+    sections: list[OneNoteSection] = Field(default_factory=list)
+    section_groups: list[OneNoteSectionGroup] = Field(
+        default_factory=list
+    )
+
+NotebookChild = Annotated[
+    OneNoteSection | OneNoteSectionGroup,
+    Field(discriminator="type"),
+]
+
+
+class FetchedOneNoteNotebook(StrictModel):
+    type: Literal["notebook"] = "notebook"
+
+    id: str
+    name: str
+    children: list[NotebookChild] = Field(default_factory=list)
