@@ -1,6 +1,7 @@
-from pydantic import BaseModel, Field
-from typing import List
+from pydantic import BaseModel, ConfigDict, Field
+from typing import List, Annotated, Literal
 import datetime
+from __future__ import annotations
 
 class Card(BaseModel):
     front: str
@@ -48,14 +49,6 @@ class SectionData(OneNoteMetadata):
 
 class PageData(OneNoteMetadata):
     contentUrl: str
-
-
-    
-from __future__ import annotations
-
-from typing import Annotated, Literal
-from pydantic import BaseModel, ConfigDict, Field
-
 
 class StrictModel(BaseModel):
     model_config = ConfigDict(
