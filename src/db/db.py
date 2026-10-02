@@ -1,13 +1,20 @@
 import sqlite3
 from pathlib import Path
+import sys
 
 import sqlite_vector
 
 
 def load_vector_extension(connection: sqlite3.Connection) -> None:
-    extension_path = (
-        Path(sqlite_vector.__file__).parent / "binaries" / "vector.so"
-    )
+    binary_name = {
+        "win32": "vector.dll",
+        "darwin": "vector.dylib",
+        "linux": "vector.so",
+    }.get(sys.platform)
+    if binary_name is None:
+        raise OSError(f"Unsupported platform for sqlite-vector: {sys.platform}")
+
+    extension_path = Path(sqlite_vector.__file__).parent / "binaries" / binary_name
 
     if not extension_path.is_file():
         raise FileNotFoundError(

@@ -3,16 +3,10 @@ from typing import Dict, List
 import hashlib
 import json
 
-try: 
-    from src.db.db import DB
-    from src.md_parser import md_parse
-    from src.type_aliases import SourceFile
-    from src.schemas import Card, Card_Source_Schema
-except ModuleNotFoundError:
-    from db.db import DB
-    from md_parser import md_parse
-    from type_aliases import SourceFile
-    from schemas import Card, Card_Source_Schema
+from ..db.db import DB
+from ..md_parser import md_parse
+from ..type_aliases import SourceFile
+from ..schemas import Card, Card_Source_Schema
 
 class SourceManager:
     def __init__(self, db: DB) -> None:

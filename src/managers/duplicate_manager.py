@@ -1,14 +1,9 @@
 import sqlite3
 from typing import List
 
-try:
-    from src.db.db import VectorDB
-    from src.models.card_embedding import CardEmbeddingModel
-    from src.schemas import Card
-except ModuleNotFoundError:
-    from db.db import VectorDB
-    from models.card_embedding import CardEmbeddingModel
-    from schemas import Card
+from ..db.db import VectorDB
+from ..models.card_embedding import CardEmbeddingModel
+from ..schemas import Card
 
 SIMILARITY_THRESHOLD = 0.1
 

@@ -2,10 +2,7 @@ import json
 import urllib.request
 from typing import List
 
-try:
-    from src.schemas import Card
-except ModuleNotFoundError:
-    from schemas import Card
+from .schemas import Card
 
 def request(action, **params):
     return {'action': action, 'params': params, 'version': 6}

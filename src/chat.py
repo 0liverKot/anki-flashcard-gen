@@ -8,22 +8,12 @@ from textual.widgets import Button, Label, Input, LoadingIndicator, TextArea
 from textual.worker import Worker, WorkerState
 from concurrent.futures import Future
 
-try:
-    from src import anki
-    from src.db.db import DB, VectorDB
-    from src.managers.source_manager import SourceManager
-    from src.managers.duplicate_manager import DuplicateManager
-except ModuleNotFoundError:
-    import anki 
-    from db.db import DB, VectorDB
-    from managers.source_manager import SourceManager
-    from managers.duplicate_manager import DuplicateManager
-try:
-    from .models.flashcard_model import FlashcardModel
-    from .schemas import Card, Response_Schema
-except ImportError:
-    from src.models.flashcard_model import FlashcardModel
-    from schemas import Card, Response_Schema
+from . import anki
+from .db.db import DB, VectorDB
+from .managers.source_manager import SourceManager
+from .managers.duplicate_manager import DuplicateManager
+from .models.flashcard_model import FlashcardModel
+from .schemas import Card, Response_Schema
 
 class Chat(App):
     
@@ -510,6 +500,4 @@ class Chat(App):
             self.loading_response.styles.display = 'none'
             self.chat_container.mount(Label("I have finished revising your desynced flashcards, just waiting for your approval now!", classes="model-text", id='finished-generating'))
             self.show_next_proposal()
-
-if __name__ == "__main__":
-    Chat().run()
+            

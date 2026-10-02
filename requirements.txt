@@ -1,0 +1,9 @@
+markdown-to-json
+msal
+numpy
+ollama
+pydantic
+requests
+sentence-transformers
+sqlite-vector
+textual

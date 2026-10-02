@@ -5,16 +5,8 @@ from concurrent.futures import ThreadPoolExecutor, Future
 
 from pydantic import ValidationError
 
-try:
-    from src import anki
-    from src.schemas import Card
-except ModuleNotFoundError:
-    from schemas import Card
-    import anki
-try:
-    from ..schemas import Response_Schema, Single_Card_Response_Schema
-except ImportError:
-    from schemas import Response_Schema, Single_Card_Response_Schema
+from .. import anki
+from ..schemas import Card, Response_Schema, Single_Card_Response_Schema
 
 class FlashcardModel: 
 

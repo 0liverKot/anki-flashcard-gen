@@ -1,9 +1,5 @@
-try:
-    from src.microsoft.auth import authenticate
-    from src.chat import Chat
-except ModuleNotFoundError:
-    from microsoft.auth import authenticate
-    from chat import Chat
+from .microsoft.auth import authenticate
+from .chat import Chat
 
 def main():
     if authenticate():
