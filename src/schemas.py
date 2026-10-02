@@ -1,5 +1,6 @@
 from pydantic import BaseModel, Field
 from typing import List
+import datetime
 
 class Card(BaseModel):
     front: str
@@ -30,4 +31,15 @@ class Card_Source_Schema(BaseModel):
     source_section: List[str]
     source_excerpt: str
     source_hash: str
+
+class NotebookData(BaseModel):
+    id: str
+    self: str
+    createdDateTime: datetime.datetime
+    displayName: str
+    lastModifiedDateTime: datetime.datetime
+    sectionsUrl: str
+    sectionGroupsUrl: str
+
+    
        

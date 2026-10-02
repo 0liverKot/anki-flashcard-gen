@@ -500,4 +500,3 @@ class Chat(App):
             self.loading_response.styles.display = 'none'
             self.chat_container.mount(Label("I have finished revising your desynced flashcards, just waiting for your approval now!", classes="model-text", id='finished-generating'))
             self.show_next_proposal()
-            

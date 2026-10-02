@@ -18,11 +18,7 @@ def authenticate() -> bool:
         result = app.acquire_token_interactive(scopes=SCOPES)
 
     if "access_token" in result:
-        r = requests.get(
-            "https://graph.microsoft.com/v1.0/me/onenote/notebooks",
-            headers={"Authorization": f"Bearer {result['access_token']}"}
-        )
-        return True
+        return result["access_token"]
     else: 
         print(result.get("error"), result.get("error_description"))
         return False
