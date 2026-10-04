@@ -33,6 +33,7 @@ class Card_Source_Schema(BaseModel):
     source_excerpt: str
     source_hash: str
 
+
 class OneNoteMetadata(BaseModel):
     id: str
     self: str
@@ -40,15 +41,24 @@ class OneNoteMetadata(BaseModel):
     displayName: str
     lastModifiedDateTime: datetime.datetime
 
+
 class NotebookData(OneNoteMetadata):
     sectionsUrl: str
     sectionGroupsUrl: str
 
+
 class SectionData(OneNoteMetadata):
     pagesUrl: str     
 
+
+class SectionGroupData(OneNoteMetadata):
+    sectionsUrl: str
+    sectionGroupsUrl: str
+
+
 class PageData(OneNoteMetadata):
     contentUrl: str
+
 
 class StrictModel(BaseModel):
     model_config = ConfigDict(
@@ -65,6 +75,7 @@ class OneNotePage(StrictModel):
     content_url: str | None = None
     parent_page_id: str | None = None
 
+
 class OneNoteSection(StrictModel):
     type: Literal["section"] = "section"
 
@@ -76,12 +87,12 @@ class OneNoteSection(StrictModel):
 
     pages: list[OneNotePage] = Field(default_factory=list)
 
+
 class OneNoteSectionGroup(StrictModel):
     type: Literal["section_group"] = "section_group"
 
     id: str
     name: str
-    order: int = Field(ge=0)
     
     parent_notebook_id: str | None = None
     parent_section_group_id: str | None = None

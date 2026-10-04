@@ -4,7 +4,7 @@ CLIENT_ID = "feca8ef7-e597-476c-bede-94418b68ab4b"
 AUTHORITY = "https://login.microsoftonline.com/common"
 SCOPES = ["Notes.Read", "Notes.Read.All"]
 
-def authenticate() -> bool: 
+def authenticate() -> str: 
     app = msal.PublicClientApplication(CLIENT_ID, authority=AUTHORITY)
 
     # check for cached token
@@ -21,4 +21,4 @@ def authenticate() -> bool:
         return result["access_token"]
     else: 
         print(result.get("error"), result.get("error_description"))
-        return False
+        return ""
