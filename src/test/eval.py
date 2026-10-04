@@ -4,7 +4,7 @@ try:
     from ..models.flashcard_model import FlashcardModel
     from ..models.judge import Judge
     from ..schemas import Card, Judge_Schema
-    from ..md_parser import md_to_json
+    from ..parsers.md_parser import md_to_json
 except ImportError:
     import sys
 
@@ -12,7 +12,7 @@ except ImportError:
     from src.models.flashcard_model import FlashcardModel
     from src.models.judge import Judge
     from schemas import Card, Judge_Schema
-    from md_parser import md_to_json
+    from src.parsers.md_parser import md_to_json
 
 def format_judge_response(response: Judge_Schema):
     return f"""

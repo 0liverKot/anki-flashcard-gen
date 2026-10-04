@@ -1,5 +1,7 @@
 import requests
 from typing import List, Mapping
+
+from src.parsers.html_parser import page_content_to_markdown
 from ..schemas import FetchedOneNoteNotebook, NotebookData, OneNotePage, OneNoteSection, OneNoteSectionGroup, PageData, SectionData, SectionGroupData
 from datetime import datetime
 
@@ -214,3 +216,45 @@ def getAllNoteBookStructure(token: str, notebook: NotebookData) -> FetchedOneNot
         name=notebook.displayName,
         children=children,
     )
+
+def get_content_from_url(token: str, content_url: str):
+    headers = authHeader(token)
+
+    response = requests.get(content_url, headers=headers)
+    raise_for_response_error(response, "Getting page content")
+
+    return page_content_to_markdown(response.text)
+
+
+def get_notebook_page_content(token: str, notebook: FetchedOneNoteNotebook) -> dict[str, str]:
+    page_content: dict[str, str] = {}
+
+    def visit_section(section: OneNoteSection, path: list[str]) -> None:
+        section_path = [*path, section.name]
+        for page in section.pages:
+            if page.content_url is None:
+                raise ValueError(
+                    f"Page {page.id} ({page.title}) does not have a content URL"
+                )
+
+            page_path = " > ".join([*section_path, page.title])
+            page_content[page_path] = get_content_from_url(
+                token,
+                page.content_url,
+            )
+
+    def visit_section_group(section_group: OneNoteSectionGroup, path: list[str]) -> None:
+        group_path = [*path, section_group.name]
+        for section in section_group.sections:
+            visit_section(section, group_path)
+        for nested_group in section_group.section_groups:
+            visit_section_group(nested_group, group_path)
+
+    notebook_path = [notebook.name]
+    for child in notebook.children:
+        if isinstance(child, OneNoteSection):
+            visit_section(child, notebook_path)
+        else:
+            visit_section_group(child, notebook_path)
+
+    return page_content

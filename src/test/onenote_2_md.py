@@ -13,11 +13,11 @@ def test():
         print("Test Result: Error getting notebook meta data")
         exit()
 
-    notebook_structure = onenote_service.getAllNoteBookStructure(
-        token,
-        notes_metadata[0],
-    )
-    print(notebook_structure)
+    notebook_structure = onenote_service.getAllNoteBookStructure(token, notes_metadata[0])
 
+    page_content = onenote_service.get_notebook_page_content(token, notebook_structure)
+
+    print(page_content)
+    
 if __name__ == "__main__":
     test()

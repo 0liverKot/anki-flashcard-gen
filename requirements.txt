@@ -7,3 +7,4 @@ requests
 sentence-transformers
 sqlite-vector
 textual
+markdownify

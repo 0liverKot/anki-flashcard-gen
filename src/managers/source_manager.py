@@ -4,7 +4,7 @@ import hashlib
 import json
 
 from ..db.db import DB
-from ..md_parser import md_parse
+from ..parsers.md_parser import md_parse
 from ..type_aliases import SourceFile
 from ..schemas import Card, Card_Source_Schema
 
