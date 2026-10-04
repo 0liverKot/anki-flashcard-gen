@@ -1,7 +1,7 @@
+from __future__ import annotations
 from pydantic import BaseModel, ConfigDict, Field
 from typing import List, Annotated, Literal
 import datetime
-from __future__ import annotations
 
 class Card(BaseModel):
     front: str

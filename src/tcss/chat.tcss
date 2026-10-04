@@ -83,6 +83,16 @@
     background: transparent;
 }
 
+.proposal-header {
+    width: 100%;
+    height: auto;
+}
+
+.duplicate-inspection-label {
+    dock: right;
+    color: hsl(45, 90%, 65%);
+}
+
 .proposal-label {
     color: hsl(0, 0%, 70%)
 }

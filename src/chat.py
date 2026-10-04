@@ -4,6 +4,7 @@ from typing import List, Tuple, cast
 from pydantic import ValidationError
 from textual.app import App, ComposeResult
 from textual.containers import VerticalScroll, Vertical, Container, Horizontal
+from textual import events
 from textual.widgets import Button, Label, Input, LoadingIndicator, TextArea
 from textual.worker import Worker, WorkerState
 from concurrent.futures import Future
@@ -37,6 +38,8 @@ class Chat(App):
         self.proposal_counter = 0
         self.original_question: str = ""
         self.original_answer: str = ""
+        self.current_duplicate: Card | None = None
+        self.showing_duplicate = False
         self.command_options = ["/sourcesync - synchronise generated cards against their sources"]
         self.syncing_cards = False
         self.syncing_card_ids: List[int] = [] 
@@ -134,9 +137,8 @@ class Chat(App):
 
 
     def show_next_proposal(self) -> None:
-        source_validation_label = self.query(".source-validation-label")
-        if source_validation_label:
-            source_validation_label.first().remove()
+        for source_validation_label in self.query(".source-validation-label"):
+            source_validation_label.remove()
 
         if self.proposal_container is not None:
             self.proposal_container.remove()
@@ -152,6 +154,8 @@ class Chat(App):
                 return
 
         self.proposal_counter += 1
+        self.current_duplicate = None
+        self.showing_duplicate = False
 
         if self.syncing_cards:
             card = self.pending_desynced_cards.get(self.syncing_card_ids[0])
@@ -160,14 +164,22 @@ class Chat(App):
         else: 
             card, similar_card = self.pending_cards[0]
             if similar_card:
-                self.chat_container.mount(
-                    Label("Duplicate Detected"),
-                    Label(similar_card.front),
-                    Label(similar_card.back))
-        
+                self.current_duplicate = similar_card
 
         proposal_widgets = [
-            Label(f"Proposal {self.proposal_counter}", classes="model-text"),
+            Horizontal(
+                Label(f"Proposal {self.proposal_counter}"),
+                *(
+                    [Label(
+                        "Potential duplicate detected, press i to inspect",
+                        classes="duplicate-inspection-label",
+                        id="duplicate-inspection",
+                    )]
+                    if self.current_duplicate
+                    else []
+                ),
+                classes="proposal-header",
+            ),
             Label(f"Question: ", classes="proposal-label"),
             TextArea(
                 f"{card.front}",
@@ -186,11 +198,11 @@ class Chat(App):
                 classes="proposal-text-area",
                 id="proposal-answer",
             ),
-            Label(f"Source: {card.source}", classes="proposal-label"),
+            Label(f"Source: {card.source}", classes="proposal-label", id="proposal-source"),
         ]
         
         # cards from synchronisation will have a valid source associated with them
-        if not self.syncing_cards and self.source_manager.is_source_valid(card.source):
+        if not self.syncing_cards and not self.source_manager.is_source_valid(card.source):
             invalid_source_label = Label("Issues validating source path to source file, if added the card source will not be tracked for sychronization.", classes="source-validation-label")
             proposal_widgets.append(invalid_source_label)
 
@@ -201,6 +213,40 @@ class Chat(App):
         self.chat_container.mount(self.proposal_container)
 
         self.display_approval_options()
+
+    def on_key(self, event: events.Key) -> None:
+        if event.key != "i" or self.current_duplicate is None:
+            return
+
+        focused_widget = self.focused
+        if isinstance(focused_widget, TextArea) and not focused_widget.disabled:
+            return
+
+        self.toggle_duplicate_inspection()
+        event.stop()
+
+    def toggle_duplicate_inspection(self) -> None:
+        if self.current_duplicate is None:
+            return
+
+        question_text_area = self.query_one("#proposal-question", TextArea)
+        answer_text_area = self.query_one("#proposal-answer", TextArea)
+        source_label = self.query_one("#proposal-source", Label)
+        inspection_label = self.query_one("#duplicate-inspection", Label)
+
+        self.showing_duplicate = not self.showing_duplicate
+        if self.showing_duplicate:
+            question_text_area.text = self.current_duplicate.front
+            answer_text_area.text = self.current_duplicate.back
+            source_label.display = False
+            inspection_label.update("Press i to go back to the proposal")
+        else:
+            card, _ = self.pending_cards[0]
+            question_text_area.text = card.front
+            answer_text_area.text = card.back
+            source_label.update(f"Source: {card.source}")
+            source_label.display = True
+            inspection_label.update("Potential duplicate detected, press i to inspect")
 
 
     def display_proposals_complete(self) -> None:
@@ -328,6 +374,9 @@ class Chat(App):
 
 
     def on_edit_proposal(self):
+        if self.showing_duplicate:
+            self.toggle_duplicate_inspection()
+
         question_text_area = self.query_one("#proposal-question", TextArea)
         answer_text_area = self.query_one("#proposal-answer", TextArea)
 

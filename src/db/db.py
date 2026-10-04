@@ -63,7 +63,7 @@ class VectorDB:
             CREATE TABLE IF NOT EXISTS card_embeddings (
                 rowid INTEGER PRIMARY KEY,
                 question TEXT NOT NULL,
-                answer TEXT NOT NULL, 
+                answer TEXT NOT NULL,
                 combined_embedding BLOB NOT NULL
             )            
             """
