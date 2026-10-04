@@ -31,7 +31,7 @@ class DB:
 
     def __init__(self) -> None:
         
-        self.sqliteConnection = sqlite3.connect('card_sources.db', check_same_thread=False)
+        self.sqliteConnection = sqlite3.connect('ankify.db', check_same_thread=False)
         self.cursor = self.sqliteConnection.cursor()
 
         self.cursor.execute(
@@ -45,13 +45,23 @@ class DB:
             )
             """
         )
+
+        self.cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS notebooks (
+            notebook_id TEXT PRIMARY KEY,
+            structure BLOB NOT NULL,
+            last_modified BLOB NOT NULL
+            )            
+            """
+        )
         self.sqliteConnection.commit()
 
 class VectorDB:
 
     def __init__(self) -> None:
 
-        self.sqliteConnection = sqlite3.connect('card_embeddings.db', check_same_thread=False)
+        self.sqliteConnection = sqlite3.connect('embeddings.db', check_same_thread=False)
         load_vector_extension(self.sqliteConnection)
         self.cursor = self.sqliteConnection.cursor()
 
@@ -78,3 +88,26 @@ class VectorDB:
             )
             """
         )
+
+        self.cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS source_chunks (
+            chunk_id TEXT NOT NULL,
+            page_id TEXT NOT NULL,
+            section_id TEXT NOT NULL,
+            content TEXT NOT NULL
+            embedded_content BLOB NOT NULL)
+            """
+        )
+
+        self.cursor.execute(
+            """
+            SELECT vector_init(
+                'source_chunks',
+                'embedded_content',
+                'dimension=1024,type=FLOAT32,distance=COSINE'
+            )
+            """
+        )
+
+        self.sqliteConnection.commit()
