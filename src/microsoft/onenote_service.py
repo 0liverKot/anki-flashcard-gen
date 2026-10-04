@@ -1,9 +1,12 @@
 import requests
-from typing import List, Mapping
+from typing import TYPE_CHECKING, List, Mapping
 
 from src.parsers.html_parser import page_content_to_markdown
 from ..schemas import FetchedOneNoteNotebook, NotebookData, OneNotePage, OneNoteSection, OneNoteSectionGroup, PageData, SectionData, SectionGroupData
 from datetime import datetime
+
+if TYPE_CHECKING:
+    from ..db.db import DB
 
 BASE_URL = "https://graph.microsoft.com/v1.0/me/onenote"
 
@@ -104,6 +107,25 @@ def getNoteBookMetadata(token: str) -> List[NotebookData]:
     raise_for_response_error(response, "Getting notebook metadata")
 
     return list(map(lambda data: to_NotebookData(data), response.json()["value"]))
+
+
+def check_onenote_sync(token: str, db: "DB") -> List[str]:
+    notebooks = getNoteBookMetadata(token)
+    stored_notebooks = dict(
+        db.cursor.execute(
+            "SELECT notebook_id, last_modified FROM notebooks"
+        ).fetchall()
+    )
+    unsynced_notebook_ids = []
+
+    for notebook in notebooks:
+        if notebook.id not in stored_notebooks:
+            unsynced_notebook_ids.append(notebook.id)
+        elif stored_notebooks[notebook.id] != str(notebook.lastModifiedDateTime):
+            unsynced_notebook_ids.append(notebook.id)
+
+    return unsynced_notebook_ids
+
 
 def _getSections(headers: Mapping[str, str], notebook: NotebookData) -> List[SectionData]:
     response = requests.get(notebook.sectionsUrl, headers=headers)

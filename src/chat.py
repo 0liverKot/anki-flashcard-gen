@@ -15,21 +15,23 @@ from .managers.source_manager import SourceManager
 from .managers.duplicate_manager import DuplicateManager
 from .models.flashcard_model import FlashcardModel
 from .schemas import Card, Response_Schema
+from .microsoft import onenote_service
 
 class Chat(App):
     
     CSS_PATH = str(Path(__file__).parent / "tcss" / "chat.tcss")
 
-    def __init__(self) -> None:
+    def __init__(self, token: str) -> None:
         super().__init__()
-        
+
+        self.token = token        
         self.model = FlashcardModel()
 
-        db = DB()
-        vector_db = VectorDB()
+        self.db = DB()
+        self.vector_db = VectorDB()
 
-        self.source_manager = SourceManager(db)
-        self.duplicate_manager = DuplicateManager(vector_db)
+        self.source_manager = SourceManager(self.db)
+        self.duplicate_manager = DuplicateManager(self.vector_db)
         self.attempts_remaining = 3
         self.pending_cards: List[Tuple[Card, Card | None]] = []
         self.accepted_cards: List[Card] = []
@@ -92,12 +94,41 @@ class Chat(App):
             if prompt == "/sourcesync":
                 self.run_source_sync()
                 return
-            
-            self.send_prompt(prompt)
+
+            self.check_onenote_synced(prompt)
+
+
+    def display_model_message(self, message: str) -> None:
+        self.chat_container.mount(
+            Label(f"{message}", classes="model-text"),
+            before=self.loading_response
+        )
+
+
+    def check_onenote_synced(self, prompt: str) -> None:
+        self.loading_response.styles.display = 'block'
+        self.display_model_message("Checking for unsynced notebooks")
+        self.run_worker(
+            lambda: self._run_onenote_sync(prompt),
+            name="onenote-sync",
+            thread=True,
+        )
+
+
+    def _run_onenote_sync(self, prompt: str) -> Tuple[str, List[str]]:
+        return prompt, onenote_service.check_onenote_sync(self.token, self.db)
+
+
+    def handle_onenote_sync_result(self, prompt: str, unsynced_notebooks: List[str]) -> None:
+        if len(unsynced_notebooks) == 1:
+            self.display_model_message("1 unsynced notebook found")
+        elif len(unsynced_notebooks) > 1:
+            self.display_model_message(f"{len(unsynced_notebooks)} notebooks found")
+
+        self.send_prompt(prompt)
 
 
     def send_prompt(self, prompt: str) -> None:
-        self.loading_response.styles.display = 'block'
 
         response_future = self.model.generate_response(self.source_manager.get_current_source_json(), prompt)
         response_future.add_done_callback(lambda future: self.handle_response(prompt, future))
@@ -225,6 +256,7 @@ class Chat(App):
         self.toggle_duplicate_inspection()
         event.stop()
 
+
     def toggle_duplicate_inspection(self) -> None:
         if self.current_duplicate is None:
             return
@@ -318,7 +350,7 @@ class Chat(App):
         input.focus()
 
 
-    def display_general_error(self, error: Exception) -> None:
+    def display_general_error(self, error: BaseException) -> None:
         self.loading_response.styles.display = 'none'
         error_label = Label(
             f"Something went wrong: {type(error).__name__}: {error}",
@@ -494,8 +526,16 @@ class Chat(App):
 
     def on_worker_state_changed(self, event: Worker.StateChanged) -> None:
         worker = event.worker
+        if worker.name == "onenote-sync":
+            self.one_note_worker_changed(event, worker)
+
+        if worker.name == "source-sync":
+            self.source_sync_worker_changed(event, worker)
         if worker.name != "source-sync":
             return
+        
+
+    def source_sync_worker_changed(self, event: Worker.StateChanged, worker: Worker) -> None:
         
         if event.state != WorkerState.SUCCESS:
             return
@@ -504,6 +544,7 @@ class Chat(App):
 
         worker = cast(Worker[List[int]], event.worker)
         desynced = worker.result
+        assert desynced is not None
 
         if not desynced or len(desynced) == 0:
             self.chat_container.mount(
@@ -521,7 +562,27 @@ class Chat(App):
                 before=self.loading_response
             )
             self.handle_desynced_cards_found(desynced)
+
+
+    def one_note_worker_changed(self, event: Worker.StateChanged, worker: Worker) -> None:
+        
+        if event.state == WorkerState.SUCCESS:
+            result = cast(Worker[Tuple[str, List[str]]], worker).result
             
+            assert result is not None
+            prompt, unsynced_notebooks = result
+            self.handle_onenote_sync_result(prompt, unsynced_notebooks)
+        
+        elif event.state == WorkerState.ERROR:
+                error = worker.error
+                if error is not None:
+                    self.display_general_error(error)
+                
+                self.ensure_tooltips_container()
+                input = self.query_one("#prompt-input")
+                input.disabled = False
+                input.focus()
+        return
 
     def handle_desynced_cards_found(self, desynced_ids: List[int]) -> None:
         

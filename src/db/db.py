@@ -95,7 +95,7 @@ class VectorDB:
             chunk_id TEXT NOT NULL,
             page_id TEXT NOT NULL,
             section_id TEXT NOT NULL,
-            content TEXT NOT NULL
+            content TEXT NOT NULL,
             embedded_content BLOB NOT NULL)
             """
         )

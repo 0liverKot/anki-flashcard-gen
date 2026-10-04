@@ -2,10 +2,10 @@ from .microsoft.auth import authenticate
 from .chat import Chat
 
 def main():
-    if authenticate():
-        Chat().run()
-    else:
-        exit()       
+    token = authenticate()
+    if token == "":
+        exit()
+    Chat(token).run()
 
 if __name__ == "__main__":
     main()
