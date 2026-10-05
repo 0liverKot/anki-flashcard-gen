@@ -27,3 +27,6 @@ class EmbeddingModel:
             chunk.embedded_content = embedded_content.astype("float32").tobytes()
 
         return chunks
+
+    def embed_prompt(self, prompt: str) -> ndarray:
+        return self.model.encode(prompt)
