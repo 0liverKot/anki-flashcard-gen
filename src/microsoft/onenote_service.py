@@ -1,5 +1,5 @@
 import requests
-from typing import TYPE_CHECKING, List, Mapping
+from typing import TYPE_CHECKING, List, Mapping, Tuple
 
 from src.parsers.html_parser import page_content_to_markdown
 from ..schemas import FetchedOneNoteNotebook, NotebookData, OneNotePage, OneNoteSection, OneNoteSectionGroup, PageData, SectionData, SectionGroupData
@@ -109,7 +109,7 @@ def getNoteBookMetadata(token: str) -> List[NotebookData]:
     return list(map(lambda data: to_NotebookData(data), response.json()["value"]))
 
 
-def check_onenote_sync(token: str, db: "DB") -> List[str]:
+def check_onenote_sync(token: str, db: "DB") -> List[NotebookData]:
     notebooks = getNoteBookMetadata(token)
     stored_notebooks = dict(
         db.cursor.execute(
@@ -120,9 +120,9 @@ def check_onenote_sync(token: str, db: "DB") -> List[str]:
 
     for notebook in notebooks:
         if notebook.id not in stored_notebooks:
-            unsynced_notebook_ids.append(notebook.id)
+            unsynced_notebook_ids.append((notebook.id, notebook.displayName))
         elif stored_notebooks[notebook.id] != str(notebook.lastModifiedDateTime):
-            unsynced_notebook_ids.append(notebook.id)
+            unsynced_notebook_ids.append((notebook.id, notebook.displayName))
 
     return unsynced_notebook_ids
 

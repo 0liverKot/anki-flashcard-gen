@@ -3,10 +3,13 @@ from typing import Dict, List
 import hashlib
 import json
 
+from src.microsoft import onenote_service
+
 from ..db.db import DB
 from ..parsers.md_parser import md_parse
+from .. parsers.notebook_content_to_chunks import content_to_chunks
 from ..type_aliases import SourceFile
-from ..schemas import Card, Card_Source_Schema
+from ..schemas import Card, Card_Source_Schema, NotebookData
 
 class SourceManager:
     def __init__(self, db: DB) -> None:
@@ -174,4 +177,12 @@ class SourceManager:
                 (source_excerpt, hashed_source_exerpt, id)
             )
             self.db.sqliteConnection.commit()
+
+
+    def add_notebook(self, token: str, notebook: NotebookData):
+        notebook_structure = onenote_service.getAllNoteBookStructure(token, notebook)
+        notebook_page_content = onenote_service.get_notebook_page_content(token, notebook_structure)
+        chunks = content_to_chunks(notebook_page_content)
+
+
                 

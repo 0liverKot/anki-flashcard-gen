@@ -93,8 +93,7 @@ class VectorDB:
             """
             CREATE TABLE IF NOT EXISTS source_chunks (
             chunk_id TEXT NOT NULL,
-            page_id TEXT NOT NULL,
-            section_id TEXT NOT NULL,
+            source_path TEXT NOT NULL,
             content TEXT NOT NULL,
             embedded_content BLOB NOT NULL)
             """

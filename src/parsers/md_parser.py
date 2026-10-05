@@ -1,47 +1,48 @@
 import json
-from collections.abc import Mapping
-from typing import Any\
-
-import markdown_to_json
+import re
 
 from ..type_aliases import SourceFile
 
-def flatten_markdown(document: Mapping[str, Any]) -> list[dict[str, str]]:
-    """Convert markdown_to_json's nested result into source/content sections.
 
-    Lists are treated as multiple pieces of content under the current heading
-    path, while dictionaries add another heading to that path.
-    """
+HEADING_PATTERN = re.compile(r"^(#{1,6})[ \t]+(.+?)\s*$")
+
+
+def markdown_to_sections(content: str) -> list[dict[str, str]]:
     sections: list[dict[str, str]] = []
+    heading_path: list[tuple[int, str]] = []
+    section_content: list[str] = []
 
-    def visit(value: Any, heading_path: tuple[str, ...]) -> None:
-        if isinstance(value, Mapping):
-            for heading, content in value.items():
-                visit(content, (*heading_path, str(heading)))
-            return
-
-        if isinstance(value, (list, tuple)):
-            for item in value:
-                visit(item, heading_path)
-            return
-
-        if value is None or not heading_path:
+    def add_section() -> None:
+        section_text = "\n".join(section_content).strip()
+        if not heading_path or not section_text:
             return
 
         sections.append(
             {
-                "source": " > ".join(heading_path),
-                "content": str(value),
+                "source": " > ".join(heading for _, heading in heading_path),
+                "content": section_text,
             }
         )
 
-    visit(document, ())
+    for line in content.splitlines():
+        heading_match = HEADING_PATTERN.match(line)
+        if heading_match:
+            add_section()
+            level = len(heading_match.group(1))
+            while heading_path and heading_path[-1][0] >= level:
+                heading_path.pop()
+            heading_path.append((level, heading_match.group(2).strip()))
+            section_content = []
+            continue
+
+        section_content.append(line)
+
+    add_section()
     return sections
 
 
 def md_parse(path) -> tuple[str, SourceFile]:
     content = path.read_text()
-    md_dict = markdown_to_json.dictify(content)
-    flattened = flatten_markdown(md_dict)
+    sections = markdown_to_sections(content)
     
-    return json.dumps(flattened), flattened
+    return json.dumps(sections), sections

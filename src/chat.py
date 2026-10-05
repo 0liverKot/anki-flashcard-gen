@@ -14,7 +14,7 @@ from .db.db import DB, VectorDB
 from .managers.source_manager import SourceManager
 from .managers.duplicate_manager import DuplicateManager
 from .models.flashcard_model import FlashcardModel
-from .schemas import Card, Response_Schema
+from .schemas import Card, NotebookData, Response_Schema
 from .microsoft import onenote_service
 
 class Chat(App):
@@ -30,6 +30,7 @@ class Chat(App):
         self.db = DB()
         self.vector_db = VectorDB()
 
+        self.unsynced_notebooks: List[NotebookData] = []
         self.source_manager = SourceManager(self.db)
         self.duplicate_manager = DuplicateManager(self.vector_db)
         self.attempts_remaining = 3
@@ -115,18 +116,36 @@ class Chat(App):
         )
 
 
-    def _run_onenote_sync(self, prompt: str) -> Tuple[str, List[str]]:
+    def _run_onenote_sync(self, prompt: str) -> Tuple[str, List[NotebookData]]:
         return prompt, onenote_service.check_onenote_sync(self.token, self.db)
 
 
-    def handle_onenote_sync_result(self, prompt: str, unsynced_notebooks: List[str]) -> None:
+    def handle_onenote_sync_result(self, prompt: str, unsynced_notebooks: List[NotebookData]) -> None:
+        self.unsynced_notebooks = unsynced_notebooks
         if len(unsynced_notebooks) == 1:
             self.display_model_message("1 unsynced notebook found")
+            self.sync_notebooks(prompt)
+
         elif len(unsynced_notebooks) > 1:
-            self.display_model_message(f"{len(unsynced_notebooks)} notebooks found")
+            self.display_model_message(f"{len(unsynced_notebooks)} unsynced notebooks found")
+            self.sync_notebooks(prompt)
+        else:
+            self.display_model_message(f"No unsynced notebooks found")
+            self.send_prompt(prompt)
 
-        self.send_prompt(prompt)
 
+    def sync_notebooks(self, prompt: str):
+
+        unsynced_notebook = self.unsynced_notebooks.pop()
+        self.display_model_message(f"Syncing {unsynced_notebook.displayName}")
+        self.run_worker(
+            lambda: self._run_sync_notebooks(prompt, unsynced_notebook),
+            name="notebook-sync",
+            thread=True,
+        )
+
+    def _run_sync_notebooks(self, prompt: str, notebook: NotebookData):
+        return prompt, self.source_manager.add_notebook(self.token, notebook)
 
     def send_prompt(self, prompt: str) -> None:
 

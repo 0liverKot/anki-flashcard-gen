@@ -34,6 +34,13 @@ class Card_Source_Schema(BaseModel):
     source_hash: str
 
 
+class Chunk_Schema(BaseModel):
+    chunk_id: str
+    source_path: str
+    content: str
+    embedded_content: bytes
+
+
 class OneNoteMetadata(BaseModel):
     id: str
     self: str
