@@ -27,10 +27,11 @@ class Chat(App):
         super().__init__()
 
         self.token = token        
-        self.model = FlashcardModel()
-        self.embedding_model = EmbeddingModel()
 
         self.db = DB()
+        
+        self.embedding_model = EmbeddingModel()
+        self.model = FlashcardModel(self.db, self.embedding_model)
 
         self.unsynced_notebooks: List[NotebookData] = []
         self.source_manager = SourceManager(self.db, self.embedding_model)
@@ -161,8 +162,7 @@ class Chat(App):
 
 
     def send_prompt(self, prompt: str) -> None:
-
-        response_future = self.model.generate_response(self.source_manager.get_current_source_json(), prompt)
+        response_future = self.model.generate_response(prompt)
         response_future.add_done_callback(lambda future: self.handle_response(prompt, future))
 
 

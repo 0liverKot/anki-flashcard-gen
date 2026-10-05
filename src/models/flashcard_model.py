@@ -1,28 +1,29 @@
 from typing import List
 import ollama
-from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, Future
 
-from pydantic import ValidationError
-
+from src.db.db import DB
+from src.managers.retrieval_manager import RetrievalManager
+from src.models.embedding_model import EmbeddingModel
 from .. import anki
-from ..schemas import Card, Response_Schema, Single_Card_Response_Schema
+from ..schemas import Card, Chunk_Schema, Response_Schema, Single_Card_Response_Schema
 
 class FlashcardModel: 
 
-    def __init__(self) -> None:
+    def __init__(self, db: DB, embedding_model: EmbeddingModel) -> None:
         self.executor = ThreadPoolExecutor(max_workers=1)
-        self.PATH = Path(__file__).parent / "notes" / "waves_and_particle_nature_of_light.md"
+        self.retrieval_manager = RetrievalManager(db, embedding_model)
 
-    def generate_response(self, file_json: str, prompt: str) -> Future[Response_Schema]:
-        return self.executor.submit(self._generate_response, file_json, prompt)
+    def generate_response(self, prompt: str) -> Future[Response_Schema]:
+        return self.executor.submit(self._generate_response, prompt)
 
-    def _generate_response(self, file_json: str, user_prompt: str = "") -> Response_Schema:
+    def _generate_response(self, user_prompt: str = "") -> Response_Schema:
         
         if user_prompt == "":
             user_prompt = "make flashcards using the source and instructions in the system prompt"
 
-        system_prompt = self.generate_system_prompt(file_json)
+        chunks = self.retrieval_manager.get_chunks(user_prompt)
+        system_prompt = self.generate_system_prompt(chunks)
         
         response = ollama.chat(
             model="qwen3:8b",
@@ -37,13 +38,15 @@ class FlashcardModel:
         return Response_Schema.model_validate_json(response["message"]["content"])
     
 
-    def generate_system_prompt(self, file_json):
-
+    def generate_system_prompt(self, chunks):
+        
+        context = self.build_context(chunks)
+        
         return f"""
-        You generate high-quality Anki flashcards from source material.
+        You generate high-quality Anki flashcards from source material. 
         
         Source:
-        {file_json}
+        {context}
 
         Rules:
         - Create atomic cards: one fact or concept per card.
@@ -64,6 +67,12 @@ class FlashcardModel:
         }}                
         
         """
+    
+    def build_context(self, chunks: List[Chunk_Schema]):
+        context = ""
+        for chunk in chunks:
+            context += f"Source: {chunk.source_path} \n Content: {chunk.content}\n\n"
+        return context
 
     def generate_single_card(self, id: int, source_path: str, source: str) -> Future[Card]:
         return self.executor.submit(self._generate_single_card, id, source_path, source)
