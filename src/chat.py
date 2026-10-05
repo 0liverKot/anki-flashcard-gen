@@ -646,8 +646,14 @@ class Chat(App):
 
         source_paths = self.source_manager.get_source_paths(desynced_ids)
         new_sources = self.source_manager.get_sources(source_paths)
-        
-        for id, path in source_paths.items(): 
+
+        self.syncing_card_ids = [
+            card_id for card_id in desynced_ids
+            if card_id in new_sources
+        ]
+
+        for id in self.syncing_card_ids:
+            path = source_paths[id]
 
             response_future = self.model.generate_single_card(id, path, new_sources[id])
             response_future.add_done_callback(lambda future, card_id=id: self.handle_single_card_generated(card_id, future))

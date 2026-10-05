@@ -1,4 +1,3 @@
-from pathlib import Path
 from typing import Dict, List
 import hashlib
 import json
@@ -8,36 +7,45 @@ from src.microsoft import onenote_service
 from src.models.embedding_model import EmbeddingModel
 
 from ..db.db import DB
-from ..parsers.md_parser import md_parse
 from .. parsers.notebook_content_to_chunks import content_to_chunks
 from ..type_aliases import SourceFile
 from ..schemas import Card, Card_Source_Schema, Chunk_Schema, NotebookData
 
 class SourceManager:
     def __init__(self, db: DB, embedding_model: EmbeddingModel) -> None:
-        self.current_source_path = Path(__file__).parent / ".." / "notes" / "unsynced_notes.md"
-
-        self.current_source_json, self.current_source_dict = md_parse(self.current_source_path)
-
         self.db = db
         self.model = embedding_model
 
     def get_current_source_dict(self) -> SourceFile:
-        return self.current_source_dict
+        rows = self.db.cursor.execute(
+            "SELECT source_path, content FROM source_chunks"
+        ).fetchall()
+        return [
+            {"source": source_path, "content": content}
+            for source_path, content in rows
+        ]
 
 
     def get_current_source_json(self) -> str:
-        return self.current_source_json
+        return json.dumps(self.get_current_source_dict())
 
 
     def is_source_valid(self, source: str, debug=False) -> bool:
-        for dict in self.current_source_dict:
-            if dict.get("source") == source:
-                return True
+        exists = self.db.cursor.execute(
+            """
+            SELECT 1
+            FROM source_chunks
+            WHERE source_path = ?
+            LIMIT 1
+            """,
+            (source,),
+        ).fetchone()
+        if exists:
+            return True
 
         if debug:
-            for dict in self.current_source_dict:
-                print(dict.get("source"))
+            for source_path in self.get_current_source_dict():
+                print(source_path.get("source"))
                 print(source)
                 print("\n")
         return False
@@ -55,37 +63,36 @@ class SourceManager:
     def add_card_sources(self, cards: List[Card], card_ids: List[int]):
 
         def create_card_source(card: Card, id: int) -> Card_Source_Schema | None:
-            for dict in self.current_source_dict:
-                if dict["source"] == card.source:
+            source = self.db.cursor.execute(
+                """
+                SELECT content
+                FROM source_chunks
+                WHERE source_path = ?
+                LIMIT 1
+                """,
+                (card.source,),
+            ).fetchone()
+            if source is None:
+                return None
 
-                    source_excerpt = dict["content"]
+            source_excerpt = source[0]
 
-                    source_path = card.source.split(">")
-                    source_path = list(map(lambda x: x.strip(), source_path))
-
-                    return Card_Source_Schema(
-                        card_id=id,
-                        source_document=source_path[0],
-                        source_section=source_path[1:],
-                        source_excerpt=source_excerpt,
-                        source_hash=self.hash_excerpt(source_excerpt)
-                    )
-            return None
-        index = 0
+            return Card_Source_Schema(
+                card_id=id,
+                source_path=card.source,
+                source_excerpt=source_excerpt,
+                source_hash=self.hash_excerpt(source_excerpt)
+            )
         rows = []
-        for card in cards:
-            card_id = card_ids[index]
+        for card, card_id in zip(cards, card_ids):
             card_source = create_card_source(card, card_id)
-
-            index += 1
 
             if card_source is None:
                 continue
                 
             rows.append((
                 card_source.card_id,
-                card_source.source_document,
-                json.dumps(card_source.source_section),
+                card_source.source_path,
                 card_source.source_excerpt,
                 card_source.source_hash
             ))
@@ -95,35 +102,43 @@ class SourceManager:
             """
             INSERT INTO card_sources (
             card_id,
-            source_document,
-            source_section,
+            source_path,
             source_excerpt,
             source_hash
             ) 
-            Values(?, ?, ?, ?, ?)""", 
+            VALUES (?, ?, ?, ?)""",
             rows)
         self.db.sqliteConnection.commit()
 
     
     def synchronise(self) -> List[int]:
-        
-        card_sources = self.get_card_sources()
-        unsynced = list()
-        for card_source in card_sources:
-            id, source_document, source_section, source_hash = card_source
-            source_path = " > ".join([source_document, *json.loads(source_section)])
-
-            for dict in self.current_source_dict:
-                if dict.get("source") == source_path and self.hash_excerpt(dict.get("content")) != source_hash:
-                    unsynced.append(id)
-                    break
+        unsynced = []
+        for card_id, source_path, source_hash in (
+            self.db.cursor.execute(
+                """
+                SELECT card_id, source_path, source_hash
+                FROM card_sources
+                """
+            ).fetchall()
+        ):
+            source = self.db.cursor.execute(
+                """
+                SELECT content
+                FROM source_chunks
+                WHERE source_path = ?
+                LIMIT 1
+                """,
+                (source_path,),
+            ).fetchone()
+            if source is None or self.hash_excerpt(source[0]) != source_hash:
+                unsynced.append(card_id)
 
         return unsynced
         
 
     def get_card_sources(self):
         card_sources = self.db.cursor.execute("""
-            SELECT card_id, source_document, source_section, source_hash
+                SELECT card_id, source_path, source_hash
             FROM card_sources        
             """).fetchall()
         return card_sources
@@ -133,39 +148,53 @@ class SourceManager:
         placeholders = ",".join("?" for _ in ids)
 
         rows = self.db.cursor.execute(f"""
-            SELECT card_id, source_document, source_section
+            SELECT card_id, source_path
             FROM card_sources
             WHERE card_id IN ({placeholders})
             """,
             ids).fetchall()
         
-        source_paths = dict()
-        for id, source_document, source_section in rows:
-            source_path = " > ".join([source_document, *json.loads(source_section)])
-
-            source_paths[id] = source_path
-
-        return source_paths
+        return {card_id: source_path for card_id, source_path in rows}
     
 
     def get_sources(self, source_paths: Dict[int, str]) -> Dict[int, str]:
-        
-        sources = dict()
-        for id, path in source_paths.items():
-            for d in self.current_source_dict:
-                if d.get("source") == path:
-                    sources[id] = d.get("content")
-        
-        return sources
+        if not source_paths:
+            return {}
+
+        rows = self.db.cursor.execute(
+            f"""
+            SELECT source_path, content
+            FROM source_chunks
+            WHERE source_path IN ({
+                ",".join("?" for _ in source_paths)
+            })
+            """,
+            list(source_paths.values()),
+        ).fetchall()
+        content_by_path = dict(rows)
+        return {
+            card_id: content_by_path[path]
+            for card_id, path in source_paths.items()
+            if path in content_by_path
+        }
     
 
     def update_sources(self, ids: List[int], cards: List[Card]) -> None:
         for id, card in zip(ids, cards):
-        
-            for dict in self.current_source_dict:
-                if dict.get("source") == card.source:
-                    source_excerpt = dict.get("content")
-                    hashed_source_exerpt = self.hash_excerpt(source_excerpt)
+            source = self.db.cursor.execute(
+                """
+                SELECT content
+                FROM source_chunks
+                WHERE source_path = ?
+                LIMIT 1
+                """,
+                (card.source,),
+            ).fetchone()
+            if source is None:
+                raise ValueError(f"Source chunk not found: {card.source}")
+
+            source_excerpt = source[0]
+            hashed_source_exerpt = self.hash_excerpt(source_excerpt)
 
             self.db.cursor.execute(
                 """

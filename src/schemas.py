@@ -28,8 +28,7 @@ class Judge_Schema(BaseModel):
 
 class Card_Source_Schema(BaseModel):
     card_id: int
-    source_document: str
-    source_section: List[str]
+    source_path: str
     source_excerpt: str
     source_hash: str
 
