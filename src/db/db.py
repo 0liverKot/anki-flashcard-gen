@@ -32,6 +32,7 @@ class DB:
     def __init__(self) -> None:
         
         self.sqliteConnection = sqlite3.connect('ankify.db', check_same_thread=False)
+        load_vector_extension(self.sqliteConnection)
         self.cursor = self.sqliteConnection.cursor()
 
         self.cursor.execute(
@@ -49,21 +50,12 @@ class DB:
         self.cursor.execute(
             """
             CREATE TABLE IF NOT EXISTS notebooks (
-            notebook_id TEXT PRIMARY KEY,
-            structure BLOB NOT NULL,
-            last_modified BLOB NOT NULL
-            )            
+                notebook_id TEXT PRIMARY KEY,
+                structure BLOB NOT NULL,
+                last_modified TEXT NOT NULL
+            )
             """
         )
-        self.sqliteConnection.commit()
-
-class VectorDB:
-
-    def __init__(self) -> None:
-
-        self.sqliteConnection = sqlite3.connect('embeddings.db', check_same_thread=False)
-        load_vector_extension(self.sqliteConnection)
-        self.cursor = self.sqliteConnection.cursor()
 
         # combined embedding stores both question and answer in the following format:
         # Question: <question>
@@ -92,10 +84,11 @@ class VectorDB:
         self.cursor.execute(
             """
             CREATE TABLE IF NOT EXISTS source_chunks (
-            chunk_id TEXT NOT NULL,
-            source_path TEXT NOT NULL,
-            content TEXT NOT NULL,
-            embedded_content BLOB NOT NULL)
+                chunk_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                source_path TEXT NOT NULL,
+                content TEXT NOT NULL,
+                embedded_content BLOB NOT NULL
+            )
             """
         )
 
@@ -108,5 +101,4 @@ class VectorDB:
             )
             """
         )
-
         self.sqliteConnection.commit()

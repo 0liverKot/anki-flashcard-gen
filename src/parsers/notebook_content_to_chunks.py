@@ -13,7 +13,6 @@ def content_to_chunks(content: dict[str, str]) -> List[Chunk_Schema]:
         for section in sections:
             chunks.append(
                 Chunk_Schema(
-                    chunk_id="0",
                     source_path=f"{source_path} > {section['source']}",
                     content=section["content"],
                     embedded_content=b"",

@@ -1,16 +1,16 @@
 import sqlite3
 from typing import List
 
-from ..db.db import VectorDB
-from ..models.card_embedding import CardEmbeddingModel
+from ..db.db import DB
+from ..models.embedding_model import EmbeddingModel
 from ..schemas import Card
 
 SIMILARITY_THRESHOLD = 0.1
 
 class DuplicateManager:
-    def __init__(self, db: VectorDB) -> None:
+    def __init__(self, db: DB, embedding_model: EmbeddingModel) -> None:
         self.db = db
-        self.model = CardEmbeddingModel()
+        self.model = embedding_model
 
     def check_duplicate(self, card: Card) -> Card | None:
         return self._find_duplicate(self._embedding_for(card))

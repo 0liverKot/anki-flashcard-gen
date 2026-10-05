@@ -35,7 +35,7 @@ class Card_Source_Schema(BaseModel):
 
 
 class Chunk_Schema(BaseModel):
-    chunk_id: str
+    chunk_id: int = 0
     source_path: str
     content: str
     embedded_content: bytes

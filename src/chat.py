@@ -9,8 +9,10 @@ from textual.widgets import Button, Label, Input, LoadingIndicator, TextArea
 from textual.worker import Worker, WorkerState
 from concurrent.futures import Future
 
+from src.models.embedding_model import EmbeddingModel
+
 from . import anki
-from .db.db import DB, VectorDB
+from .db.db import DB
 from .managers.source_manager import SourceManager
 from .managers.duplicate_manager import DuplicateManager
 from .models.flashcard_model import FlashcardModel
@@ -26,13 +28,13 @@ class Chat(App):
 
         self.token = token        
         self.model = FlashcardModel()
+        self.embedding_model = EmbeddingModel()
 
         self.db = DB()
-        self.vector_db = VectorDB()
 
         self.unsynced_notebooks: List[NotebookData] = []
-        self.source_manager = SourceManager(self.db)
-        self.duplicate_manager = DuplicateManager(self.vector_db)
+        self.source_manager = SourceManager(self.db, self.embedding_model)
+        self.duplicate_manager = DuplicateManager(self.db, self.embedding_model)
         self.attempts_remaining = 3
         self.pending_cards: List[Tuple[Card, Card | None]] = []
         self.accepted_cards: List[Card] = []
@@ -144,8 +146,19 @@ class Chat(App):
             thread=True,
         )
 
-    def _run_sync_notebooks(self, prompt: str, notebook: NotebookData):
+
+    def _run_sync_notebooks(self, prompt: str, notebook: NotebookData) -> Tuple[str, None]:
         return prompt, self.source_manager.add_notebook(self.token, notebook)
+
+
+    def handle_sync_notebooks_result(self, prompt: str) -> None:
+        if len(self.unsynced_notebooks) == 0:
+            self.display_model_message("All notebooks now synced")
+            self.send_prompt(prompt)
+            return
+
+        self.sync_notebooks(prompt)
+
 
     def send_prompt(self, prompt: str) -> None:
 
@@ -550,9 +563,31 @@ class Chat(App):
 
         if worker.name == "source-sync":
             self.source_sync_worker_changed(event, worker)
-        if worker.name != "source-sync":
-            return
         
+        if worker.name == "notebook-sync":
+            self.notebook_sync_worker_changed(event, worker)
+
+
+    def notebook_sync_worker_changed(self, event: Worker.StateChanged, worker: Worker) -> None:
+        
+        if event.state == WorkerState.SUCCESS:
+            result = cast(Worker[Tuple[str, None]], worker).result
+            
+            assert result is not None
+            prompt, _ = result
+            self.handle_sync_notebooks_result(prompt)
+        
+        elif event.state == WorkerState.ERROR:
+            error = worker.error
+            if error is not None:
+                self.display_general_error(error)
+            
+            self.ensure_tooltips_container()
+            input = self.query_one("#prompt-input")
+            input.disabled = False
+            input.focus()
+        return
+
 
     def source_sync_worker_changed(self, event: Worker.StateChanged, worker: Worker) -> None:
         
@@ -586,7 +621,7 @@ class Chat(App):
     def one_note_worker_changed(self, event: Worker.StateChanged, worker: Worker) -> None:
         
         if event.state == WorkerState.SUCCESS:
-            result = cast(Worker[Tuple[str, List[str]]], worker).result
+            result = cast(Worker[Tuple[str, List[NotebookData]]], worker).result
             
             assert result is not None
             prompt, unsynced_notebooks = result

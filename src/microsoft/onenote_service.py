@@ -1,7 +1,9 @@
 import requests
+import hashlib
 from typing import TYPE_CHECKING, List, Mapping, Tuple
 
 from src.parsers.html_parser import page_content_to_markdown
+from src.parsers.notebook_content_to_chunks import content_to_chunks
 from ..schemas import FetchedOneNoteNotebook, NotebookData, OneNotePage, OneNoteSection, OneNoteSectionGroup, PageData, SectionData, SectionGroupData
 from datetime import datetime
 
@@ -110,21 +112,51 @@ def getNoteBookMetadata(token: str) -> List[NotebookData]:
 
 
 def check_onenote_sync(token: str, db: "DB") -> List[NotebookData]:
+    def content_hash(content: str) -> str:
+        return hashlib.sha256(content.encode("utf-8")).hexdigest()
+
     notebooks = getNoteBookMetadata(token)
-    stored_notebooks = dict(
-        db.cursor.execute(
+    stored_notebooks = {
+        row[0]: row[1]
+        for row in db.cursor.execute(
             "SELECT notebook_id, last_modified FROM notebooks"
         ).fetchall()
+    }
+    stored_chunks = dict(
+        db.cursor.execute(
+            "SELECT source_path, content FROM source_chunks"
+        ).fetchall()
     )
-    unsynced_notebook_ids = []
+    stored_chunk_hashes = {
+        path: content_hash(content)
+        for path, content in stored_chunks.items()
+    }
+    unsynced_notebooks = []
 
     for notebook in notebooks:
         if notebook.id not in stored_notebooks:
-            unsynced_notebook_ids.append((notebook.id, notebook.displayName))
-        elif stored_notebooks[notebook.id] != str(notebook.lastModifiedDateTime):
-            unsynced_notebook_ids.append((notebook.id, notebook.displayName))
+            unsynced_notebooks.append(notebook)
+            continue
 
-    return unsynced_notebook_ids
+        structure = getAllNoteBookStructure(token, notebook)
+        page_content = get_notebook_page_content(token, structure)
+        current_chunks = content_to_chunks(page_content)
+        current_paths = {chunk.source_path for chunk in current_chunks}
+        notebook_prefix = f"{notebook.displayName} > "
+        stored_paths = {
+            path
+            for path in stored_chunks
+            if path.startswith(notebook_prefix)
+        }
+        has_changed_chunk = any(
+            stored_chunk_hashes.get(chunk.source_path) != content_hash(chunk.content)
+            for chunk in current_chunks
+        )
+
+        if has_changed_chunk or stored_paths != current_paths:
+            unsynced_notebooks.append(notebook)
+
+    return unsynced_notebooks
 
 
 def _getSections(headers: Mapping[str, str], notebook: NotebookData) -> List[SectionData]:
@@ -264,6 +296,7 @@ def get_notebook_page_content(token: str, notebook: FetchedOneNoteNotebook) -> d
                 token,
                 page.content_url,
             )
+
 
     def visit_section_group(section_group: OneNoteSectionGroup, path: list[str]) -> None:
         group_path = [*path, section_group.name]
