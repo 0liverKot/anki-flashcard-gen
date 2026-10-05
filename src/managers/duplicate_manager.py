@@ -67,24 +67,53 @@ class DuplicateManager:
         )
 
 
-    def add_cards(self, cards: List[Card]) -> None:
+    def add_cards(self, cards: List[Card], card_ids: List[int]) -> None:
+        if len(cards) != len(card_ids):
+            raise ValueError("cards and card_ids must have the same length")
+
         embeddings = self.model.combined_embeddings(cards)
 
         rows = [
             (
+                card_id,
                 card.front,
                 card.back,
                 sqlite3.Binary(embedding.astype("float32").tobytes())
             )
-            for card, embedding in zip(cards, embeddings)
+            for card_id, card, embedding in zip(card_ids, cards, embeddings)
         ]
 
         self.db.cursor.executemany(
             """
             INSERT INTO card_embeddings
-                (question, answer, combined_embedding)
-            VALUES (?, ?, vector_as_f32(?))
+                (anki_note_id, question, answer, combined_embedding)
+            VALUES (?, ?, ?, vector_as_f32(?))
             """, 
             rows
+        )
+        self.db.sqliteConnection.commit()
+
+    def update_cards(self, card_ids: List[int], cards: List[Card]) -> None:
+        if len(cards) != len(card_ids):
+            raise ValueError("cards and card_ids must have the same length")
+
+        embeddings = self.model.combined_embeddings(cards)
+        rows = [
+            (
+                card.front,
+                card.back,
+                sqlite3.Binary(embedding.astype("float32").tobytes()),
+                card_id,
+            )
+            for card_id, card, embedding in zip(card_ids, cards, embeddings)
+        ]
+
+        self.db.cursor.executemany(
+            """
+            UPDATE card_embeddings
+            SET question = ?, answer = ?, combined_embedding = vector_as_f32(?)
+            WHERE anki_note_id = ?
+            """,
+            rows,
         )
         self.db.sqliteConnection.commit()

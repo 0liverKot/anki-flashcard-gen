@@ -320,10 +320,11 @@ class Chat(App):
             if self.syncing_cards:
                 anki.update_cards(self.accepted_descyned_ids, self.accepted_cards)
                 self.source_manager.update_sources(self.accepted_descyned_ids, self.accepted_cards)
+                self.duplicate_manager.update_cards(self.accepted_descyned_ids, self.accepted_cards)
             else: 
                 card_ids = anki.add_cards(self.accepted_cards)
                 self.source_manager.add_card_sources(self.accepted_cards, card_ids)
-                self.duplicate_manager.add_cards(self.accepted_cards)
+                self.duplicate_manager.add_cards(self.accepted_cards, card_ids)
 
         self.query_one("#finished-generating").remove()
 
